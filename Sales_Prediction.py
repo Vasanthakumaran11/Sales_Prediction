@@ -72,6 +72,11 @@ def load_and_preprocess_data():
     df['Month'] = df['Date'].dt.month
     df['Year'] = df['Date'].dt.year
     df['Day'] = df['Date'].dt.day
+    df['DayOfYear'] = df['Date'].dt.dayofyear
+    df['IsWeekend'] = (df['DayOfWeek'] > 5).astype(int)
+    
+    # Filter for open stores during training to focus on active sales
+    df = df[df['Open'] != 0]
     
     # Handle StateHoliday
     df['StateHoliday'] = df['StateHoliday'].astype(str).replace({'0': 0, 'a': 1, 'b': 2, 'c': 3}).astype(int)
@@ -82,19 +87,37 @@ def load_and_preprocess_data():
     df['StoreCategory_Encoded'] = df['StoreType'].map(type_map)
     
     # Features
+    # Sort by date for proper lag/rolling calculation
+    df = df.sort_values(['Store', 'Date'])
+    
+    # Advanced Feature Engineering: Rolling Means and Lags
+    # Note: These are slightly simplified for the training sample integration
+    df['Sales_Lag1'] = df.groupby('Store')['Sales'].shift(1).fillna(df['Sales'].mean())
+    df['Sales_RollMean7'] = df.groupby('Store')['Sales'].transform(lambda x: x.rolling(window=7).mean()).fillna(df['Sales'].mean())
+    
     features = ['Store', 'DayOfWeek', 'Promo', 'StateHoliday', 'SchoolHoliday', 
-                'Month', 'Year', 'Day', 'StoreCategory_Encoded']
+                'Month', 'Year', 'Day', 'StoreCategory_Encoded', 'DayOfYear', 
+                'IsWeekend', 'Sales_Lag1', 'Sales_RollMean7']
     X = df[features]
     y = df['Sales']
     
-    # Train-test split (using a sample for speed in this demo)
-    X_train, X_test, y_train, y_test = train_test_split(X.head(100000), y.head(100000), test_size=0.2, random_state=42)
+    # Train-test split (using a larger sample for high accuracy)
+    # 250k rows provides a good balance of temporal depth and training speed
+    X_train, X_test, y_train, y_test = train_test_split(X.head(250000), y.head(250000), test_size=0.1, random_state=42)
     
     return X_train, X_test, y_train, y_test, features
 
 def train_xgboost(X_train, X_test, y_train, y_test):
-    print("[AI] Training XGBoost Regressor...")
-    model = xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=5, random_state=42)
+    print("[AI] Training High-Precision XGBoost Regressor (Phase 3)...")
+    model = xgb.XGBRegressor(
+        n_estimators=300, 
+        learning_rate=0.03, 
+        max_depth=8, 
+        random_state=42,
+        subsample=0.85,
+        colsample_bytree=0.85,
+        n_jobs=-1  # Parallel processing
+    )
     model.fit(X_train, y_train)
     
     preds = model.predict(X_test)
@@ -102,17 +125,26 @@ def train_xgboost(X_train, X_test, y_train, y_test):
     rmse = np.sqrt(mean_squared_error(y_test, preds))
     r2 = r2_score(y_test, preds)
     
-    # Accuracy based on MAPE
-    mape = np.mean(np.abs((y_test - preds) / y_test))
-    accuracy = (1 - mape) * 100
+    # Accuracy based on WAPE (Weighted Absolute Percentage Error)
+    # WAPE = sum(abs(y_test - preds)) / sum(y_test)
+    # Accuracy = (1 - WAPE) * 100
+    total_error = np.sum(np.abs(y_test - preds))
+    total_sales = np.sum(y_test)
     
-    print(f"\nModel Performance:")
-    print(f"- MAE: {mae:.2f}")
-    print(f"- RMSE: {rmse:.2f}")
-    print(f"- R2 Score: {r2:.4f}")
-    print(f"- Accuracy: {accuracy:.2f}%")
+    if total_sales > 0:
+        wape = total_error / total_sales
+        accuracy = max(0, (1 - wape) * 100)
+    else:
+        accuracy = 0.0
     
-    return model
+    metrics = {
+        "mae": mae,
+        "rmse": rmse,
+        "r2": r2,
+        "accuracy": accuracy
+    }
+    
+    return model, metrics
 
 # ==========================================
 # 3. HYBRID EXTENSION (LSTM)
@@ -130,7 +162,6 @@ class SalesLSTM(nn.Module):
         return out
 
 def train_lstm_hybrid(sales_series):
-    print("\n[Hybrid] Training LSTM for Personalization (Advanced Mode)...")
     # Simple time-series setup
     data = sales_series.values[-180:].reshape(-1, 1).astype(float)
     # Normalize
@@ -196,7 +227,7 @@ def main():
     
     # Layer 2: ML Forecasting (Pre-trained/Loading)
     X_train, X_test, y_train, y_test, features = load_and_preprocess_data()
-    xgb_model = train_xgboost(X_train, X_test, y_train, y_test)
+    xgb_model, metrics = train_xgboost(X_train, X_test, y_train, y_test)
     
     # Layer 3: Prediction Input Flow
     print("\n--- PREDICTION INPUT FLOW ---")
@@ -208,9 +239,14 @@ def main():
     lead = int(input("Supplier Lead Time (weeks): ") or 2)
 
     # Prepare input for XGBoost
-    # Feature order: ['Store', 'DayOfWeek', 'Promo', 'StateHoliday', 'SchoolHoliday', 'Month', 'Year', 'Day', 'StoreCategory_Encoded']
-    # Using dummy values for Store, DayOfWeek, Year, etc. for the prediction
-    input_data = pd.DataFrame([[1, 1, promo, holiday, 0, month, 2015, 1, store_info['category_encoded']]], 
+    # Feature order: ['Store', 'DayOfWeek', 'Promo', 'StateHoliday', 'SchoolHoliday', 'Month', 'Year', 'Day', 'StoreCategory_Encoded', 'DayOfYear', 'IsWeekend', 'Sales_Lag1', 'Sales_RollMean7']
+    day_of_year = (pd.to_datetime(f"2015-{month}-1")).dayofyear if 1 <= month <= 12 else 1
+    
+    # Approximation for new features based on user's current avg weekly sales input
+    # Sales_Lag1 ≈ avg_sales / 7, Sales_RollMean7 ≈ avg_sales / 7
+    daily_approx = avg_sales / 7
+    input_data = pd.DataFrame([[1, 1, promo, holiday, 0, month, 2015, 1, store_info['category_encoded'], 
+                                day_of_year, 0, daily_approx, daily_approx]], 
                               columns=features)
     
     predicted_weekly = xgb_model.predict(input_data)[0]
@@ -221,11 +257,10 @@ def main():
     sales_std = y_train.std() 
     safety, reorder, risk = optimize_inventory(predicted_30d, inv, lead, sales_std)
     
-    # Layer 5: Hybrid Extension
-    hybrid_mode = input("\nEnable Hybrid Mode (LSTM)? (Yes/No): ").lower() == 'yes'
-    if hybrid_mode:
-        lstm_model, l_mean, l_std = train_lstm_hybrid(y_train)
-        print("[Hybrid] Prediction refined using temporal patterns.")
+    # Layer 5: Hybrid Extension (LSTM enabled by default)
+    print("\n[Hybrid] Training LSTM for Personalization (Advanced Mode)...")
+    lstm_model, l_mean, l_std = train_lstm_hybrid(y_train)
+    print("[Hybrid] Prediction refined using temporal patterns.")
 
     # FINAL OUTPUT
     print("\n" + "*"*30)
@@ -245,6 +280,16 @@ def main():
         print(f"Advice: Stocks are adequate but close to safety limits. Monitor sales closely.")
     else:
         print(f"Status: Inventory levels are healthy. No urgent reorder needed.")
+
+    # Layer 6: Model Performance Metrics (Displayed at the end)
+    print("\n" + "="*30)
+    print("MODEL PERFORMANCE METRICS")
+    print("="*30)
+    print(f"- MAE: {metrics['mae']:.2f}")
+    print(f"- RMSE: {metrics['rmse']:.2f}")
+    print(f"- R2 Score: {metrics['r2']:.4f}")
+    print(f"- Accuracy: {metrics['accuracy']:.2f}%")
+    print("="*30)
         
 if __name__ == "__main__":
     main()
