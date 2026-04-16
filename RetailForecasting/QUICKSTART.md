@@ -3,12 +3,55 @@
 ## Installation & Setup (5 minutes)
 
 ### 1. Install Dependencies
+
+#### Option A: Using Anaconda (Recommended - Avoid Build Errors)
 ```bash
 cd RetailForecasting
+
+# Create conda environment
+conda create -n sales_pred python=3.10
+
+# Activate environment
+conda activate sales_pred
+
+# Install packages via conda (pre-built binaries, no build errors)
+conda install -c conda-forge pandas numpy scikit-learn xgboost lightgbm streamlit matplotlib seaborn python-dateutil
+```
+
+**Why conda?** Pre-built binaries avoid the `pkg_resources` error that occurs when pip tries to build pandas from source.
+
+---
+
+#### Option B: Using pip with Build Tools (Advanced)
+If you prefer pip, ensure build dependencies are installed first:
+
+```bash
+cd RetailForecasing
+
+# Upgrade pip and build tools
+python -m pip install --upgrade pip setuptools wheel
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Generate Base Dataset & Train Model
+### 2. Verify Installation
+```bash
+# Check installed packages
+conda list  # if using conda
+# or
+pip list    # if using pip
+```
+
+Expected packages:
+- pandas (1.5.3+)
+- numpy (1.24.3+)
+- scikit-learn (1.3.0+)
+- xgboost (2.0.0+)
+- lightgbm (4.0.0+)
+- streamlit (1.28.0+)
+
+### 3. Generate Base Dataset & Train Model
 Choose one method:
 
 #### Option A: Terminal GUI (Recommended)
@@ -34,6 +77,11 @@ This will:
 ---
 
 ## Using the System
+
+### Pre-requisites: Activate Environment (If using conda)
+```bash
+conda activate sales_pred
+```
 
 ### Method 1: Terminal Interface
 ```bash
@@ -214,6 +262,25 @@ Personalized Model R²: 0.88 (After 2-4 weeks)
 ---
 
 ## Troubleshooting
+
+### Common Installation Issues
+
+#### Issue: "ModuleNotFoundError: No module named 'pkg_resources'" (pip error)
+This occurs when pip tries to build pandas from source. **Solution:**
+
+**Method 1: Switch to Conda (Recommended)**
+```bash
+# Install Anaconda first if not already installed
+# Then use conda installation from Step 1 above
+```
+
+**Method 2: Fix pip installation**
+```bash
+pip install --upgrade pip setuptools wheel
+pip install --no-build-isolation -r requirements.txt
+```
+
+---
 
 ### Issue: "Model not found"
 ```bash

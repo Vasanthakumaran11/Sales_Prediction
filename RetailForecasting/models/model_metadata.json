@@ -29,7 +29,7 @@
     "High_Demand_Flag",
     "Low_Stock_Flag"
   ],
-  "training_date": "2026-04-16T20:54:57.702028",
+  "training_date": "2026-04-16T22:01:31.929267",
   "test_split": 0.2,
   "random_state": 42,
   "metrics": {
@@ -55,10 +55,10 @@
       "test_r2": 0.9999739049380424
     },
     "Random Forest": {
-      "train_mae": 0.024992318583092397,
-      "test_mae": 0.0310585993224879,
-      "train_rmse": 0.18182352476283747,
-      "test_rmse": 0.20912140546869087,
+      "train_mae": 0.024992318583092317,
+      "test_mae": 0.031058599322488053,
+      "train_rmse": 0.18182352476283778,
+      "test_rmse": 0.20912140546869115,
       "test_r2": 0.9999811194907314
     },
     "XGBoost": {

@@ -101,17 +101,41 @@ RetailForecasting/
 
 ### 1. Installation
 
+#### Recommended: Using Anaconda
 ```bash
-# Clone or navigate to project
+# Navigate to project
 cd RetailForecasting
 
-# Install dependencies
+# Create conda environment
+conda create -n sales_pred python=3.10
+
+# Activate environment
+conda activate sales_pred
+
+# Install dependencies (pre-built binaries - no build errors)
+conda install -c conda-forge pandas numpy scikit-learn xgboost lightgbm streamlit matplotlib seaborn python-dateutil
+```
+
+**For detailed step-by-step instructions, see [CONDA_SETUP.md](CONDA_SETUP.md)**
+
+---
+
+#### Alternative: Using pip
+```bash
+# Install dependencies with pip
+pip install -r requirements.txt
+
+# Note: If you get "pkg_resources" error, upgrade build tools first:
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
 ### 2. Run Complete Pipeline
 
 ```bash
+# Ensure conda environment is active (if using conda)
+# conda activate sales_pred
+
 # This generates data, trains model, and initializes system
 python main.py
 # Choose: 1.1 → Run complete pipeline
@@ -377,9 +401,28 @@ The system automatically:
 
 ## 🚨 Troubleshooting
 
+### "ModuleNotFoundError: No module named 'pkg_resources'" (Installation error)
+This occurs when pip tries to build packages from source.
+
+**Solution 1: Use Conda (Recommended)**
+```bash
+# Follow CONDA_SETUP.md for complete conda installation
+conda create -n sales_pred python=3.10
+conda activate sales_pred
+conda install -c conda-forge pandas numpy scikit-learn xgboost lightgbm streamlit
+```
+
+**Solution 2: Fix pip installation**
+```bash
+pip install --upgrade pip setuptools wheel
+pip install --no-build-isolation -r requirements.txt
+```
+
 ### Missing packages
 ```bash
 pip install --upgrade -r requirements.txt
+# If using conda:
+conda install -c conda-forge pandas numpy scikit-learn xgboost lightgbm streamlit
 ```
 
 ### Model not loading
@@ -393,6 +436,33 @@ python src/models/train_base.py
 pip install streamlit --upgrade
 streamlit run app/app.py --logger.level=debug
 ```
+
+## 🆕 Enhanced Application (NEW!)
+
+We now provide an **advanced terminal application** with professional features:
+
+### Enhanced Smart Grocery App (`app_enhanced.py`)
+
+```bash
+python app_enhanced.py
+```
+
+**Features:**
+- ✅ Store registration and management
+- ✅ Product catalog (40+ items, 7 categories)
+- ✅ Daily sales entry with validation
+- ✅ Advanced inventory management
+- ✅ Sales analytics and insights
+- ✅ Monthly demand predictions
+- ✅ Professional terminal UI
+- ✅ Real-world workflow
+
+**Documentation:**
+- [ENHANCED_APP_GUIDE.md](ENHANCED_APP_GUIDE.md) - Complete feature guide
+- [SYSTEM_COMPLETE_GUIDE.md](SYSTEM_COMPLETE_GUIDE.md) - Getting started
+- [CONDENSED_ARCHITECTURE.md](CONDENSED_ARCHITECTURE.md) - Technical design
+
+---
 
 ## 📚 File Formats
 
