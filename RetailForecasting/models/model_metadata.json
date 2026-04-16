@@ -1,0 +1,84 @@
+{
+  "model_name": "Linear Regression",
+  "features": [
+    "Day_of_Week",
+    "Is_Weekend",
+    "Is_Festival",
+    "Units_Stocked",
+    "Units_Remaining",
+    "Unit_Price",
+    "Discount",
+    "Revenue",
+    "Suggested_Next_Stock",
+    "Store_Type_Encoded",
+    "Location_Type_Encoded",
+    "Category_Encoded",
+    "Day_Type_Encoded",
+    "Lag_1_Units_Sold",
+    "Lag_1_Revenue",
+    "Lag_7_Units_Sold",
+    "Lag_7_Revenue",
+    "Rolling_Mean_7d_Units_Sold",
+    "Rolling_Mean_7d_Revenue",
+    "Rolling_Std_7d_Units_Sold",
+    "Rolling_Std_7d_Revenue",
+    "Sell_Through_Ratio",
+    "Stock_Remaining_Ratio",
+    "Revenue_Per_Unit_Stocked",
+    "Discount_Applied",
+    "High_Demand_Flag",
+    "Low_Stock_Flag"
+  ],
+  "training_date": "2026-04-16T20:54:57.702028",
+  "test_split": 0.2,
+  "random_state": 42,
+  "metrics": {
+    "train_mae": 3.9558142182268697e-13,
+    "test_mae": 3.690360774168379e-13,
+    "train_rmse": 5.657592754885023e-13,
+    "test_rmse": 5.301486451568609e-13,
+    "test_r2": 1.0
+  },
+  "all_models_metrics": {
+    "Linear Regression": {
+      "train_mae": 3.9558142182268697e-13,
+      "test_mae": 3.690360774168379e-13,
+      "train_rmse": 5.657592754885023e-13,
+      "test_rmse": 5.301486451568609e-13,
+      "test_r2": 1.0
+    },
+    "Decision Tree": {
+      "train_mae": 0.01631393298059966,
+      "test_mae": 0.03262786596119928,
+      "train_rmse": 0.15510493119994503,
+      "test_rmse": 0.24585033421021762,
+      "test_r2": 0.9999739049380424
+    },
+    "Random Forest": {
+      "train_mae": 0.024992318583092397,
+      "test_mae": 0.0310585993224879,
+      "train_rmse": 0.18182352476283747,
+      "test_rmse": 0.20912140546869087,
+      "test_r2": 0.9999811194907314
+    },
+    "XGBoost": {
+      "train_mae": 0.012502609752118587,
+      "test_mae": 0.048350829631090164,
+      "train_rmse": 0.04149027207768866,
+      "test_rmse": 0.2771626539394822,
+      "test_r2": 0.9999668598175049
+    },
+    "LightGBM": {
+      "train_mae": 0.10900534957036039,
+      "test_mae": 0.10756175189387333,
+      "train_rmse": 0.7850659638842894,
+      "test_rmse": 0.8313434340713832,
+      "test_r2": 0.9997016145318354
+    }
+  },
+  "training_data_shape": [
+    3780,
+    38
+  ],
+  "feature_count": 27
+}
