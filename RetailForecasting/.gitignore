@@ -1,0 +1,114 @@
+# ============================================================================
+# RetailForecasting - Git Ignore File
+# Excludes data, models, cache, and OS files from version control
+# ============================================================================
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+venv.bak/
+env.bak/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# Data Files (Generated/User Input)
+data/raw/*.csv
+data/user/*.csv
+data/processed/*.csv
+!data/raw/.gitkeep
+!data/user/.gitkeep
+!data/processed/.gitkeep
+
+# Model Files (Binary/Serialized)
+models/*.pkl
+models/*.joblib
+models/*.h5
+models/*.pt
+!models/.gitkeep
+
+# Notebooks (Optional - keep if you want)
+notebooks/*.ipynb
+!notebooks/.gitkeep
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary Files
+*.tmp
+*.temp
+*~
+.~*
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Database Files (if added later)
+*.db
+*.sqlite
+*.sqlite3
+
+# Large Files (if any)
+*.zip
+*.tar.gz
+
+# Misc
+.project
+.pydevproject
+.settings/
