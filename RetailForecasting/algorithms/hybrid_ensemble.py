@@ -1,6 +1,6 @@
 """
 Hybrid Ensemble Model
-Combines predictions from all 8 models using weighted averaging
+Combines predictions from all 7 models using weighted averaging
 Based on each model's R² score for optimal performance
 """
 
@@ -20,12 +20,11 @@ from algorithms.xgboost_model import XGBoostModel
 from algorithms.lightgbm_model import LightGBMModel
 from algorithms.svr_model import SVRModel
 from algorithms.knn_model import KNNModel
-from algorithms.prophet_model import ProphetModel
 from src.utils.config import TARGET_VARIABLE
 
 
 class HybridEnsembleModel:
-    """Hybrid Ensemble combining all 8 ML models"""
+    """Hybrid Ensemble combining all 7 ML models"""
     
     def __init__(self, model_path=None):
         self.models = {}
@@ -47,7 +46,6 @@ class HybridEnsembleModel:
         self.models['LightGBM'] = LightGBMModel()
         self.models['SVR'] = SVRModel()
         self.models['KNN'] = KNNModel()
-        self.models['Prophet'] = ProphetModel()
     
     def load_data(self, df):
         """Load and prepare data"""
@@ -76,16 +74,14 @@ class HybridEnsembleModel:
             model.y_train = self.y_train
             model.y_test = self.y_test
             model.feature_columns = self.feature_columns
-            if hasattr(model, 'df_ref') or type(model).__name__ == "ProphetModel":
-                model.df_ref = getattr(self, 'df_ref', None)
         
         print(f"  ✓ Train size: {self.X_train.shape[0]}")
         print(f"  ✓ Test size: {self.X_test.shape[0]}")
     
     def train(self):
-        """Train all 8 individual models"""
+        """Train all 7 individual models"""
         print("\n" + "="*80)
-        print("🤖 [HYBRID ENSEMBLE] Training all 8 models...")
+        print("🤖 [HYBRID ENSEMBLE] Training all 7 models...")
         print("="*80)
         
         for model_name, model in self.models.items():

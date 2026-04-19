@@ -12,7 +12,6 @@ from algorithms.xgboost_model import XGBoostModel
 from algorithms.lightgbm_model import LightGBMModel
 from algorithms.svr_model import SVRModel
 from algorithms.knn_model import KNNModel
-from algorithms.prophet_model import ProphetModel
 from algorithms.hybrid_ensemble import HybridEnsembleModel
 from algorithms.model_comparison import ModelComparison
 from src.preprocessing.preprocess import DataPreprocessor
@@ -66,8 +65,6 @@ class ModelTrainer:
             model = SVRModel()
         elif model_name == 'KNN':
             model = KNNModel()
-        elif model_name == 'Prophet':
-            model = ProphetModel()
         else:
             print(f"❌ Unknown model: {model_name}")
             return None
@@ -93,9 +90,9 @@ class ModelTrainer:
         return model
     
     def train_all_individual_models(self):
-        """Train all 5 individual models"""
+        """Train all 7 individual models"""
         print("\n" + "="*80)
-        print("🚀 TRAINING ALL 5 INDIVIDUAL MODELS")
+        print("🚀 TRAINING ALL 7 INDIVIDUAL MODELS")
         print("="*80)
         
         model_names = [
@@ -105,8 +102,7 @@ class ModelTrainer:
             'XGBoost',
             'LightGBM',
             'SVR',
-            'KNN',
-            'Prophet'
+            'KNN'
         ]
         
         for model_name in model_names:

@@ -34,15 +34,15 @@ class PredictionEngine:
 
     def load_model(self):
         """Load trained model and metadata"""
-        print("📚 Loading model...")
+        print("Loading model...")
 
         # Determine which model to use
         if self.use_personalized and os.path.exists(PERSONALIZED_MODEL_PATH):
             model_path = PERSONALIZED_MODEL_PATH
-            print(f"  ✓ Using personalized model")
+            print(f"  v Using personalized model")
         else:
             model_path = BASE_MODEL_PATH
-            print(f"  ✓ Using base model")
+            print(f"  v Using base model")
 
         # Load model
         if not os.path.exists(model_path):
@@ -58,8 +58,8 @@ class PredictionEngine:
                 self.feature_columns = self.metadata.get("features", [])
                 self.model_name = self.metadata.get("model_name", "Unknown")
 
-        print(f"  ✓ Model loaded: {self.model_name}")
-        print(f"  ✓ Features: {len(self.feature_columns)}")
+        print(f"  v Model loaded: {self.model_name}")
+        print(f"  v Features: {len(self.feature_columns)}")
 
     def prepare_input(self, input_df):
         """Prepare input data for prediction"""
