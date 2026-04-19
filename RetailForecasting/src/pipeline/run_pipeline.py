@@ -76,28 +76,22 @@ class CompletePipeline:
         # Stage 2: Preprocess data
         self.stage_2_preprocess_data()
 
-        # Stage 3: Train base model
-        self.stage_3_train_base_model()
+        # Stage 3: Train base model (Skipped to avoid redundant logs)
+        # self.stage_3_train_base_model()
 
-        # Stage 4: Initialize user system
-        self.stage_4_initialize_user_system()
+        # Stage 4: Initialize user system (Handled later)
+        # self.stage_4_initialize_user_system()
 
-        # Stage 5: Test predictions
-        self.stage_5_test_predictions()
+        # Stage 5: Test predictions (Handled dynamically)
+        # self.stage_5_test_predictions()
 
         print("\n" + "=" * 100)
-        print("COMPLETE PIPELINE EXECUTION SUCCESSFUL")
+        print("BASE PIPELINE DATA GENERATION & PREPROCESSING SUCCESSFUL")
         print("=" * 100)
         print(
             """
-System is now ready for:
-✅ Making predictions with base model (Cold Start)
-✅ Collecting user data (sales, purchases)
-✅ Retraining with personalized data (after 2-4 weeks)
-
-📖 Next Steps:
-1. Use app/app.py for Streamlit UI
-2. Or use main.py for terminal-based interaction
+1. The models will now be individually trained with this fresh data.
+2. Optionally run `python app_enhanced.py` directly for the CLI Grocery App
         """
         )
 

@@ -125,7 +125,7 @@ class InputHandler:
                     break
                 Dashboard.print_warning("Price must be greater than 0")
             
-            # Discount
+            # Discount (only ask for discount if available)
             print("\n🎉 Discount (%) or press Enter for no discount:")
             discount_input = Dashboard.get_input("Discount: ", input_type='float', allow_empty=True)
             discount = discount_input if discount_input else 0.0
@@ -133,15 +133,6 @@ class InputHandler:
             if discount < 0 or discount > 100:
                 Dashboard.print_warning("Discount must be between 0-100%")
                 discount = 0
-            
-            # Promotional sale
-            promo = 1 if Dashboard.get_yes_no("Was this a promotional sale?") else 0
-            
-            # Holiday
-            holiday = 1 if Dashboard.get_yes_no("Was this on a holiday?") else 0
-            
-            # Shop closed
-            shop_closed = 1 if Dashboard.get_yes_no("Was shop closed this day?") else 0
             
             # Calculate revenue
             revenue = units_sold * unit_price * (1 - discount / 100)
@@ -153,9 +144,9 @@ class InputHandler:
                 'unit_price': unit_price,
                 'discount': discount,
                 'revenue': revenue,
-                'promo': promo,
-                'holiday': holiday,
-                'shop_closed': shop_closed
+                'promo': 0,
+                'holiday': 0,
+                'shop_closed': 0
             }
         
         except ValueError as e:
@@ -277,4 +268,63 @@ class InputHandler:
         
         except Exception as e:
             Dashboard.print_error(f"Error adding product: {str(e)}")
+            return None
+    
+    @staticmethod
+    def get_month_for_prediction() -> Optional[Dict]:
+        """
+        Get current month and shop opening month for sales prediction
+        
+        Returns:
+            Dictionary with current_month and opening_month (1-12), or None if cancelled
+        """
+        Dashboard.print_header("📅 SALES PREDICTION SETUP", 70)
+        
+        months = ['January', 'February', 'March', 'April', 'May', 'June',
+                 'July', 'August', 'September', 'October', 'November', 'December']
+        
+        try:
+            # Current month
+            print("\n📆 What is the current month?")
+            for idx, month in enumerate(months, 1):
+                print(f"  {idx:2d}) {month}", end="")
+                if idx % 3 == 0:
+                    print()
+                else:
+                    print("   ", end="")
+            
+            current_month = None
+            while current_month is None:
+                choice = Dashboard.get_input("\nEnter current month number (1-12): ", input_type='int')
+                if 1 <= choice <= 12:
+                    current_month = choice
+                else:
+                    Dashboard.print_warning("Please select between 1 and 12")
+            
+            # Opening month
+            print("\n📆 Which month will your store open/be operational?")
+            for idx, month in enumerate(months, 1):
+                print(f"  {idx:2d}) {month}", end="")
+                if idx % 3 == 0:
+                    print()
+                else:
+                    print("   ", end="")
+            
+            opening_month = None
+            while opening_month is None:
+                choice = Dashboard.get_input("\nEnter opening month number (1-12): ", input_type='int')
+                if 1 <= choice <= 12:
+                    opening_month = choice
+                else:
+                    Dashboard.print_warning("Please select between 1 and 12")
+            
+            return {
+                'current_month': current_month,
+                'opening_month': opening_month,
+                'current_month_name': months[current_month - 1],
+                'opening_month_name': months[opening_month - 1]
+            }
+        
+        except Exception as e:
+            Dashboard.print_error(f"Error in prediction setup: {str(e)}")
             return None

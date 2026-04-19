@@ -118,15 +118,13 @@ class Dashboard:
     
     @staticmethod
     def print_store_profile(store_info: dict):
-        """Print store profile information"""
+        """Print store profile information (without timestamp and investment)"""
         Dashboard.print_header("📦 STORE PROFILE")
         
         print(f"  {Dashboard.COLORS['BOLD']}Store Name:{Dashboard.COLORS['END']} {store_info.get('store_name', 'N/A')}")
         print(f"  {Dashboard.COLORS['BOLD']}Location:{Dashboard.COLORS['END']} {store_info.get('location', 'N/A')}")
         print(f"  {Dashboard.COLORS['BOLD']}Store Type:{Dashboard.COLORS['END']} {store_info.get('store_type', 'N/A')}")
-        print(f"  {Dashboard.COLORS['BOLD']}Investment:{Dashboard.COLORS['END']} ₹{store_info.get('investment', 0):,.0f}")
-        print(f"  {Dashboard.COLORS['BOLD']}Created:{Dashboard.COLORS['END']} {store_info.get('created_date', 'N/A')}")
-        print(f"  {Dashboard.COLORS['BOLD']}Total Sales:{Dashboard.COLORS['END']} ₹{store_info.get('total_revenue', 0):,.0f}")
+        print(f"  {Dashboard.COLORS['BOLD']}Monthly Revenue:{Dashboard.COLORS['END']} ₹{store_info.get('total_revenue', 0):,.0f}")
         print()
     
     @staticmethod

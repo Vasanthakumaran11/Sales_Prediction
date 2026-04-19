@@ -147,6 +147,10 @@ class SalesAnalytics:
         for sale in sales:
             try:
                 date_str = sale.get('Date', '')
+                # Handle both DD-MM-YYYY and DD-MM-YYYY HH:MM:SS formats
+                if ' ' in date_str:
+                    date_str = date_str.split(' ')[0]  # Extract just the date part
+                
                 # Parse date DD-MM-YYYY
                 parts = date_str.split('-')
                 if len(parts) == 3:
@@ -242,7 +246,7 @@ class SalesAnalytics:
     @staticmethod
     def display_analytics(analytics_data: Dict) -> None:
         """Display formatted analytics"""
-        from .dashboard import Dashboard
+        from interface.dashboard import Dashboard
         
         Dashboard.print_section("📊 SALES ANALYTICS SUMMARY")
         
@@ -272,6 +276,112 @@ class SalesAnalytics:
         print(f"\n{Dashboard.COLORS['BOLD']}Promotional Impact:{Dashboard.COLORS['END']}")
         print(f"  Promo Boost: {promo.get('promotion_boost_percent', 0):.1f}%")
         print(f"  Promo Transactions: {promo.get('total_promo_transactions', 0)}")
+        
+        print()
+    
+    def generate_30day_forecast(self, current_stock: Dict[str, int]) -> Dict:
+        """
+        Generate 30-day sales forecast with budget and stock recommendations
+        
+        Args:
+            current_stock: Dictionary with product names and current stock quantities
+        
+        Returns:
+            Dictionary with forecast and recommendations
+        """
+        performance = self.get_product_performance()
+        daily_avg = self.get_daily_average()
+        avg_daily_units = daily_avg.get('avg_daily_units', 0)
+        avg_daily_revenue = daily_avg.get('avg_daily_revenue', 0)
+        
+        forecast = {
+            'forecast_period_days': 30,
+            'estimated_total_units': avg_daily_units * 30,
+            'estimated_total_revenue': avg_daily_revenue * 30,
+            'product_forecasts': {},
+            'stock_recommendations': {},
+            'budget_recommendations': {}
+        }
+        
+        # Generate per-product forecasts
+        for product, data in performance.items():
+            avg_units_per_day = data.get('avg_units_per_transaction', 0) * (data.get('transactions', 0) / max(daily_avg.get('total_transaction_days', 1), 1))
+            
+            forecast['product_forecasts'][product] = {
+                'forecasted_units_30d': avg_units_per_day * 30,
+                'forecasted_revenue_30d': data.get('avg_price', 0) * avg_units_per_day * 30,
+                'current_stock': current_stock.get(product, 0),
+                'avg_daily_demand': avg_units_per_day
+            }
+            
+            # Stock recommendations
+            current_qty = current_stock.get(product, 0)
+            forecasted_30d = avg_units_per_day * 30
+            safety_stock = forecasted_30d * 0.2  # 20% safety buffer
+            recommended_stock = forecasted_30d + safety_stock
+            
+            forecast['stock_recommendations'][product] = {
+                'current_stock': current_qty,
+                'forecasted_30d': int(forecasted_30d),
+                'safety_stock': int(safety_stock),
+                'recommended_minimum': int(recommended_stock),
+                'status': 'Adequate' if current_qty >= recommended_stock else 'Low - Reorder Soon'
+            }
+            
+            # Budget recommendations
+            unit_price = data.get('avg_price', 0)
+            units_to_reorder = max(0, int(recommended_stock - current_qty))
+            reorder_cost = units_to_reorder * unit_price
+            
+            forecast['budget_recommendations'][product] = {
+                'units_to_purchase': units_to_reorder,
+                'unit_price': unit_price,
+                'total_investment_needed': reorder_cost,
+                'reason': f'Maintain {int(recommended_stock)} units minimum based on {int(forecasted_30d)} units/month demand'
+            }
+        
+        return forecast
+    
+    @staticmethod
+    def display_30day_forecast(forecast: Dict) -> None:
+        """Display 30-day forecast with budget and stock recommendations"""
+        from interface.dashboard import Dashboard
+        
+        Dashboard.print_section("📈 30-DAY SALES FORECAST & RECOMMENDATIONS")
+        
+        # Overall forecast
+        print(f"{Dashboard.COLORS['BOLD']}Overall Forecast (30 Days):{Dashboard.COLORS['END']}")
+        print(f"  Estimated Units: {int(forecast.get('estimated_total_units', 0))} units")
+        print(f"  Estimated Revenue: ₹{forecast.get('estimated_total_revenue', 0):,.2f}")
+        
+        # Stock recommendations
+        print(f"\n{Dashboard.COLORS['BOLD']}📦 Stock Recommendations:{Dashboard.COLORS['END']}")
+        stock_recs = forecast.get('stock_recommendations', {})
+        for product, rec in list(stock_recs.items())[:5]:  # Show top 5
+            status_color = Dashboard.COLORS['GREEN'] if rec['status'] == 'Adequate' else Dashboard.COLORS['RED']
+            print(f"\n  {product}:")
+            print(f"    Current Stock: {rec['current_stock']} units")
+            print(f"    Forecasted 30-day Demand: {rec['forecasted_30d']} units")
+            print(f"    Recommended Minimum: {rec['recommended_minimum']} units")
+            print(f"    Status: {status_color}{rec['status']}{Dashboard.COLORS['END']}")
+        
+        # Budget recommendations
+        print(f"\n{Dashboard.COLORS['BOLD']}💰 Budget Recommendations:{Dashboard.COLORS['END']}")
+        budget_recs = forecast.get('budget_recommendations', {})
+        total_investment = 0
+        for product, rec in list(budget_recs.items())[:5]:  # Show top 5
+            if rec['units_to_purchase'] > 0:
+                print(f"\n  {product}:")
+                print(f"    Units to Purchase: {rec['units_to_purchase']} units")
+                print(f"    Unit Price: ₹{rec['unit_price']:.2f}")
+                print(f"    Total Investment: ₹{rec['total_investment_needed']:,.2f}")
+                print(f"    Reason: {rec['reason']}")
+                total_investment += rec['total_investment_needed']
+        
+        if total_investment > 0:
+            print(f"\n  {Dashboard.COLORS['BOLD']}Total Budget Needed: ₹{total_investment:,.2f}{Dashboard.COLORS['END']}")
+        else:
+            print(f"\n  {Dashboard.COLORS['GREEN']}✓ All products have adequate stock{Dashboard.COLORS['END']}")
         
         print()
 

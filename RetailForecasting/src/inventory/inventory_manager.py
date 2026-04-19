@@ -197,7 +197,7 @@ class InventoryManager:
     @staticmethod
     def display_inventory_recommendation(recommendation: Dict) -> None:
         """Display formatted inventory recommendation"""
-        from .dashboard import Dashboard
+        from interface.dashboard import Dashboard
         
         Dashboard.print_section(f"📦 INVENTORY RECOMMENDATION: {recommendation['product_name']}")
         

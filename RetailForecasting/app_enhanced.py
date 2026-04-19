@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-"""
-AI-Based Smart Grocery Account & Demand Forecasting System
-Enhanced Terminal-Based Application
-
-Main entry point for the complete system with interactive menus,
-user management, sales tracking, and ML-based predictions.
-"""
-
 import sys
 import os
 from pathlib import Path
@@ -22,6 +13,7 @@ from users.product_manager import ProductManager
 from interface.dashboard import Dashboard
 from interface.input_handler import InputHandler
 from analytics.sales_analytics import SalesAnalytics
+from analytics.sales_predictor import SalesPredictor
 from inventory.inventory_manager import InventoryManager
 
 
@@ -60,7 +52,7 @@ class SmartGroceryApp:
                 break
     
     def register_new_store(self):
-        """Register a new store"""
+        """Register a new store with AI-powered sales prediction"""
         store_info = InputHandler.get_store_registration()
         
         if store_info is None:
@@ -79,6 +71,35 @@ class SmartGroceryApp:
             return
         
         Dashboard.print_success(f"Store '{store_info['store_name']}' created successfully!")
+        
+        # Get month information for prediction
+        month_info = InputHandler.get_month_for_prediction()
+        if month_info is None:
+            Dashboard.print_error("Prediction setup cancelled")
+            return
+        
+        # Load sales predictor
+        try:
+            predictor = SalesPredictor()
+            
+            # Display sales prediction by category
+            predictor.display_sales_prediction(
+                month_info['opening_month'], 
+                store_info['store_type']
+            )
+            
+            input(f"\n{Dashboard.COLORS['BOLD']}Press Enter to see product recommendations...{Dashboard.COLORS['END']}")
+            
+            # Display product recommendations
+            predictor.display_product_recommendations(
+                store_info['investment'],
+                month_info['opening_month'],
+                store_info['store_type']
+            )
+            
+        except Exception as e:
+            Dashboard.print_warning(f"Could not load sales predictions: {str(e)}")
+            Dashboard.print_warning("Proceeding with standard product suggestions")
         
         # Show product suggestions
         self.current_store_path = self.user_manager.get_store_path(store_info['store_name'])
@@ -195,12 +216,16 @@ class SmartGroceryApp:
         try:
             sale_id = f"SALE_{int(datetime.now().timestamp())}"
             
+            # Add current time to the date for timestamp
+            current_time = datetime.now().strftime("%H:%M:%S")
+            sale_date_with_time = f"{sales_entry['date']} {current_time}"
+            
             sales_file = self.current_store_path / "sales.csv"
             with open(sales_file, 'a', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow([
                     sale_id,
-                    sales_entry['date'],
+                    sale_date_with_time,  # Date with timestamp
                     sales_entry['product_name'],
                     sales_entry['units_sold'],
                     sales_entry['unit_price'],
@@ -219,6 +244,14 @@ class SmartGroceryApp:
                 sales_entry['units_sold'],
                 sales_entry['revenue']
             )
+            
+            # Auto-update product stock after sale
+            product_manager = ProductManager(self.current_store_path)
+            product_manager.reduce_stock_after_sale(
+                sales_entry['product_name'],
+                sales_entry['units_sold']
+            )
+            print(f"  ✓ Product stock updated ('{sales_entry['product_name']}': -{sales_entry['units_sold']} units)")
             
         except Exception as e:
             Dashboard.print_error(f"Failed to save sale: {str(e)}")
@@ -252,6 +285,27 @@ class SmartGroceryApp:
                 ])
             
             Dashboard.print_table(headers, rows, [20, 12, 15, 12, 12])
+        
+        # Show recent sales transactions with timestamp
+        sales = self.sales_analytics.load_sales_data()
+        if sales:
+            Dashboard.print_section("📋 RECENT TRANSACTIONS (with Date-Time)")
+            
+            headers = ['Date', 'Product', 'Units', 'Price', 'Discount', 'Revenue']
+            rows = []
+            
+            # Show last 10 transactions
+            for sale in sales[-10:]:
+                rows.append([
+                    sale.get('Date', 'N/A'),  # Date with timestamp
+                    sale.get('Product_Name', 'N/A'),
+                    str(int(sale.get('Units_Sold', 0))),
+                    f"₹{float(sale.get('Unit_Price', 0)):.2f}",
+                    f"{float(sale.get('Discount', 0)):.1f}%",
+                    f"₹{float(sale.get('Revenue', 0)):,.2f}"
+                ])
+            
+            Dashboard.print_table(headers, rows, [12, 20, 8, 12, 10, 15])
         
         input(f"\n{Dashboard.COLORS['BOLD']}Press Enter to continue...{Dashboard.COLORS['END']}")
     

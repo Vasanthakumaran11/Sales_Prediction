@@ -72,6 +72,9 @@ class UserManager:
             # Update last accessed
             profile['last_accessed'] = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             
+            # Calculate monthly revenue
+            profile['total_revenue'] = self.get_monthly_revenue(store_name)
+            
             # Save updated profile
             with open(profile_path, 'w') as f:
                 json.dump(profile, f, indent=4)
@@ -100,6 +103,56 @@ class UserManager:
         except Exception:
             pass
         return False
+    
+    def get_monthly_revenue(self, store_name: str, month: int = None, year: int = None) -> float:
+        """
+        Get revenue for a specific month
+        
+        Args:
+            store_name: Name of the store
+            month: Month number (1-12), if None uses current month
+            year: Year, if None uses current year
+        
+        Returns:
+            Total revenue for the month
+        """
+        try:
+            from datetime import datetime
+            import csv
+            
+            if month is None:
+                month = datetime.now().month
+            if year is None:
+                year = datetime.now().year
+            
+            store_path = self.base_path / store_name
+            sales_file = store_path / "sales.csv"
+            
+            if not sales_file.exists():
+                return 0.0
+            
+            total_revenue = 0.0
+            with open(sales_file, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        date_str = row.get('Date', '')
+                        # Handle both DD-MM-YYYY and DD-MM-YYYY HH:MM:SS formats
+                        if ' ' in date_str:
+                            date_str = date_str.split(' ')[0]  # Extract just the date part
+                        
+                        # Parse date in DD-MM-YYYY format
+                        sale_date = datetime.strptime(date_str, "%d-%m-%Y")
+                        
+                        if sale_date.month == month and sale_date.year == year:
+                            revenue = float(row.get('Revenue', 0))
+                            total_revenue += revenue
+                    except (ValueError, KeyError):
+                        continue
+            
+            return total_revenue
+        except Exception:
+            return 0.0
     
     def get_store_path(self, store_name: str) -> Path:
         """Get store directory path"""

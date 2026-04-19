@@ -213,6 +213,29 @@ class ProductManager:
         except Exception:
             return False
     
+    def reduce_stock_after_sale(self, product_name: str, units_sold: int) -> bool:
+        """
+        Reduce product stock after a sale
+        
+        Args:
+            product_name: Name of the product sold
+            units_sold: Number of units sold
+        
+        Returns:
+            Boolean indicating success
+        """
+        try:
+            product = self.get_product_by_name(product_name)
+            if not product:
+                return False
+            
+            current_stock = int(product.get('Stock_Quantity', 0))
+            new_stock = max(0, current_stock - units_sold)  # Don't go below 0
+            
+            return self.update_stock(product_name, new_stock)
+        except Exception:
+            return False
+    
     def _product_exists(self, product_name: str) -> bool:
         """Check if product already exists"""
         return self.get_product_by_name(product_name) is not None
@@ -250,3 +273,51 @@ class ProductManager:
                 print(f"   ... and {len(products) - 5} more")
         
         print("\n" + "="*60)
+    
+    def get_detailed_product_suggestions(self, investment: int) -> Dict:
+        """
+        Get detailed product suggestions with quantities and investment breakdown
+        
+        Args:
+            investment: Investment amount in INR
+        
+        Returns:
+            Dictionary with detailed product suggestions including quantities and amounts
+        """
+        suggestions = self.get_suggested_products(investment)
+        category = suggestions['investment_category']
+        available_budget = investment * 0.7  # 70% for inventory, 30% for operations
+        
+        detailed = {
+            'investment_category': category,
+            'total_available_budget': available_budget,
+            'products_with_details': []
+        }
+        
+        # Calculate budget per category
+        num_categories = len(suggestions['categories'])
+        budget_per_category = available_budget / num_categories if num_categories > 0 else 0
+        
+        for category_name in suggestions['categories']:
+            if category_name in self.PRODUCT_CATALOG:
+                products = self.PRODUCT_CATALOG[category_name]
+                num_products = len(list(products.keys())[:5])
+                budget_per_product = budget_per_category / num_products if num_products > 0 else 0
+                
+                for idx, (product_name, details) in enumerate(list(products.items())[:5]):
+                    price = details['default_price']
+                    # Calculate suggested quantity based on budget and price
+                    suggested_qty = int(budget_per_product / price) if price > 0 else 5
+                    suggested_qty = max(suggested_qty, 5)  # Minimum 5 units
+                    investment_amount = suggested_qty * price
+                    
+                    detailed['products_with_details'].append({
+                        'product_name': product_name,
+                        'category': category_name,
+                        'suggested_quantity': suggested_qty,
+                        'unit_price': price,
+                        'investment_amount': investment_amount,
+                        'turnover': details.get('turnover', 'Medium')
+                    })
+        
+        return detailed

@@ -7,12 +7,15 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from data.data_engine import UserDataEngine
 from models.predict import PredictionEngine
 from models.train_personalized import PersonalizedModelTrainer
 from pipeline.run_pipeline import CompletePipeline
 from utils.inventory import InventoryOptimizer, print_inventory_report
+from algorithms.model_trainer import ModelTrainer
+from algorithms.model_comparison import ModelComparison
 import pandas as pd
 from datetime import datetime
 
@@ -57,28 +60,18 @@ class RetailForecastingApp:
         print("MAIN MENU")
         print("=" * 80)
         print("""
-1. Setup & Pipeline
-   1.1 - Run complete pipeline (Dataset + Training)
+1. Model Training & Execution
+   1.1 - Run model training pipeline and display evaluation metrics
    
-2. Sales Management
-   2.1 - Record daily sales
-   2.2 - View sales summary
+2. Smart Grocery System
+   2.1 - Open interactive Smart Grocery App
    
-3. inventory Management
-   3.1 - Get inventory recommendations
-   3.2 - View inventory status
+3. Model Analysis
+   3.1 - Show evaluation metrics and accuracy of all models
    
-4. Demand Forecasting
-   4.1 - Get demand forecast
-   4.2 - View forecast insights
-   
-5. Model Management
-   5.1 - Check personalized model status
-   5.2 - Trigger retraining
-   
-6. Exit
+4. Exit
 
-Enter your choice (e.g., 1.1, 2.1, etc.):
+Enter your choice (e.g., 1.1, 2.1, 3.1):
         """)
 
     def run_complete_pipeline(self):
@@ -249,6 +242,163 @@ Enter your choice (e.g., 1.1, 2.1, etc.):
             print(f"⚠️  Insufficient data ({data_count} points collected)")
             print(f"   Required: {trainer.check_retraining_required()} points")
 
+    def train_single_algorithm(self):
+        """Train a single model from algorithms folder"""
+        print("\n" + "="*80)
+        print("🤖 TRAIN SINGLE ALGORITHM MODEL")
+        print("="*80)
+        
+        models = [
+            'Linear Regression',
+            'Decision Tree',
+            'Random Forest',
+            'XGBoost',
+            'LightGBM'
+        ]
+        
+        print("\nAvailable Models:")
+        for i, model in enumerate(models, 1):
+            print(f"  {i}. {model}")
+        
+        try:
+            choice = int(input("\nSelect model (1-5): "))
+            if 1 <= choice <= 5:
+                model_name = models[choice - 1]
+                
+                trainer = ModelTrainer()
+                trainer.load_data()
+                trainer.train_single_model(model_name)
+                
+                print(f"\n✅ {model_name} trained and saved successfully!")
+            else:
+                print("❌ Invalid choice")
+        except ValueError:
+            print("❌ Invalid input")
+    
+    def train_all_algorithms(self):
+        """Train all 8 individual algorithms"""
+        print("\n" + "="*80)
+        print("🤖 TRAIN ALL 8 INDIVIDUAL MODELS")
+        print("="*80)
+        
+        confirm = input("\nThis will train all 8 models. Continue? (y/n): ").lower()
+        if confirm == 'y':
+            trainer = ModelTrainer()
+            trainer.load_data()
+            trainer.train_all_individual_models()
+            
+            print("\n" + "="*80)
+            print("✅ ALL 8 MODELS TRAINED SUCCESSFULLY")
+            print("="*80)
+    
+    def train_hybrid_ensemble_model(self):
+        """Train the hybrid ensemble model"""
+        print("\n" + "="*80)
+        print("🎯 TRAIN HYBRID ENSEMBLE MODEL")
+        print("="*80)
+        
+        print("\nThe Hybrid Ensemble combines predictions from all 8 models")
+        print("using weighted averaging based on their R² scores.")
+        
+        confirm = input("\nContinue with hybrid ensemble training? (y/n): ").lower()
+        if confirm == 'y':
+            trainer = ModelTrainer()
+            trainer.load_data()
+            trainer.train_hybrid_ensemble()
+            
+            # The model_trainer already prints the success message.
+    
+    def view_model_comparison(self):
+        """View detailed model comparison report"""
+        print("\n" + "="*100)
+        print("📊 MODEL COMPARISON REPORT")
+        print("="*100)
+        
+        trainer = ModelTrainer()
+        trainer.load_data()
+        
+        # Check if individual metrics exist
+        print("\nLoading model metrics...")
+        print("(Make sure you have trained the models first using options 6.2 or 6.3)")
+        
+        try:
+            # Try to load metrics from saved models
+            from algorithms.linear_regression import LinearRegressionModel
+            from algorithms.decision_tree import DecisionTreeModel
+            from algorithms.random_forest import RandomForestModel
+            from algorithms.xgboost_model import XGBoostModel
+            from algorithms.lightgbm_model import LightGBMModel
+            
+            models = [
+                LinearRegressionModel(),
+                DecisionTreeModel(),
+                RandomForestModel(),
+                XGBoostModel(),
+                LightGBMModel()
+            ]
+            
+            comparison = ModelComparison()
+            
+            for model in models:
+                try:
+                    model.load_model()
+                    if model.metrics:
+                        comparison.add_model_metrics(
+                            model.metrics.get('model_name', 'Unknown'),
+                            model.metrics
+                        )
+                except:
+                    pass
+            
+            if comparison.metrics_data:
+                comparison.print_summary_report()
+            else:
+                print("⚠️  No model metrics found. Please train models first.")
+        
+        except Exception as e:
+            print(f"❌ Error loading model metrics: {e}")
+    
+    def view_detailed_metrics(self):
+        """View detailed metrics for all trained models"""
+        print("\n" + "="*100)
+        print("📈 DETAILED MODEL METRICS")
+        print("="*100)
+        
+        try:
+            from algorithms.linear_regression import LinearRegressionModel
+            from algorithms.decision_tree import DecisionTreeModel
+            from algorithms.random_forest import RandomForestModel
+            from algorithms.xgboost_model import XGBoostModel
+            from algorithms.lightgbm_model import LightGBMModel
+            
+            models = [
+                ('Linear Regression', LinearRegressionModel()),
+                ('Decision Tree', DecisionTreeModel()),
+                ('Random Forest', RandomForestModel()),
+                ('XGBoost', XGBoostModel()),
+                ('LightGBM', LightGBMModel())
+            ]
+            
+            for model_name, model in models:
+                try:
+                    model.load_model()
+                    if model.metrics:
+                        print(f"\n┌─ {model_name}")
+                        print(f"├─ Training Performance:")
+                        print(f"│  ├─ MAE:  {model.metrics.get('train_mae', 0):.4f}")
+                        print(f"│  ├─ RMSE: {model.metrics.get('train_rmse', 0):.4f}")
+                        print(f"│  └─ R²:   {model.metrics.get('train_r2', 0):.4f}")
+                        print(f"├─ Testing Performance:")
+                        print(f"│  ├─ MAE:  {model.metrics.get('test_mae', 0):.4f}")
+                        print(f"│  ├─ RMSE: {model.metrics.get('test_rmse', 0):.4f}")
+                        print(f"│  └─ R²:   {model.metrics.get('test_r2', 0):.4f} ⭐")
+                        print(f"└─")
+                except:
+                    print(f"\n⚠️  {model_name}: Metrics not available (train model first)")
+        
+        except Exception as e:
+            print(f"❌ Error loading metrics: {e}")
+
     def run(self):
         """Main application loop"""
         if not self.initialize_system():
@@ -261,23 +411,25 @@ Enter your choice (e.g., 1.1, 2.1, etc.):
 
             if choice == "1.1":
                 self.run_complete_pipeline()
+                self.train_all_algorithms()
+                self.train_hybrid_ensemble_model()
+                # Training and evaluating are handled entirely within the functions.
             elif choice == "2.1":
-                self.record_sale()
-            elif choice == "2.2":
-                self.view_sales_summary()
+                print("\n" + "=" * 80)
+                print("🏪 LAUNCHING SMART GROCERY SYSTEM")
+                print("=" * 80)
+                try:
+                    from app_enhanced import SmartGroceryApp
+                    app = SmartGroceryApp()
+                    app.run()
+                except KeyboardInterrupt:
+                    print("\nReturned to Main Menu")
+                except Exception as e:
+                    print(f"❌ Error running Smart Grocery App: {e}")
             elif choice == "3.1":
-                self.get_inventory_recommendations()
-            elif choice == "3.2":
-                print("Inventory status: Use 3.1 for detailed recommendations")
-            elif choice == "4.1":
-                self.get_forecast()
-            elif choice == "4.2":
-                print("Forecast insights available through 4.1")
-            elif choice == "5.1":
-                self.check_model_status()
-            elif choice == "5.2":
-                self.trigger_retraining()
-            elif choice == "6":
+                self.view_model_comparison()
+                self.view_detailed_metrics()
+            elif choice == "4":
                 print("\n👋 Goodbye!")
                 break
             else:
