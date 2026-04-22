@@ -4,6 +4,7 @@ from pathlib import Path
 import csv
 import json
 from datetime import datetime
+import numpy as np
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
@@ -15,6 +16,8 @@ from interface.input_handler import InputHandler
 from analytics.sales_analytics import SalesAnalytics
 from analytics.sales_predictor import SalesPredictor
 from inventory.inventory_manager import InventoryManager
+from analytics.hybrid_ensemble import HybridEnsemblePredictor
+from analytics.decision_intelligence import DecisionIntelligenceLayer
 
 
 class SmartGroceryApp:
@@ -85,7 +88,8 @@ class SmartGroceryApp:
             # Display sales prediction by category
             predictor.display_sales_prediction(
                 month_info['opening_month'], 
-                store_info['store_type']
+                store_info['store_type'],
+                investment=store_info['investment']
             )
             
             input(f"\n{Dashboard.COLORS['BOLD']}Press Enter to see product recommendations...{Dashboard.COLORS['END']}")
@@ -461,20 +465,123 @@ class SmartGroceryApp:
         """Get monthly demand prediction"""
         Dashboard.clear_screen()
         Dashboard.print_header("🔮 MONTHLY DEMAND PREDICTION", 70)
+
+        # --- Advanced Hybrid Forecasting ---
+        # Collect store profile
+        profile = self.user_manager.load_store_profile(self.current_store)
+        if not profile:
+            Dashboard.print_error("Store profile not found.")
+            return
+
+        # Get target month for prediction
+        month_info = InputHandler.get_month_for_prediction()
+        if not month_info:
+            return
+        target_month = month_info['opening_month']
+        Dashboard.print_info(f"Generating realistic forecast for {SalesPredictor().get_month_name(target_month)}...")
+
+        # Feature engineering (example: location, size, category, investment)
+        loc_map = {'Rural': 0, 'Town': 1, 'Urban': 2}
+        size_map = {'Small': 0, 'Medium': 1, 'Large': 2}
+        cat_map = {'A': 3, 'B': 2, 'C': 1, 'D': 0}
+        location = profile.get('location', 'Rural')
+        size = profile.get('store_size', 'Small')
+        category = profile.get('category', 'D')
+        investment = float(profile.get('investment', 100000))
+        margin = float(profile.get('margin', 10))
+        features = [
+            loc_map.get(location, 0),
+            size_map.get(size, 0),
+            cat_map.get(category, 0),
+            investment
+        ]
+
+        # Hybrid ML/DL prediction
+        ensemble = HybridEnsemblePredictor()
+        raw_sales = ensemble.predict(np.array(features))
+
+        # --- Historical Data Enrichment ---
+        historical_avg_daily = None
         
-        # Note: In production, this would use the ML models
-        # For now, showing the workflow
+        # Try Tier 1: Historical month-on-month data
+        monthly_summary = self.sales_analytics.get_monthly_summary()
+        month_matches = []
+        for month_year, data in monthly_summary.items():
+            if f"-{target_month:02d}" in month_year:
+                month_matches.append(data['units_sold'] / 30) # daily avg for that month
         
-        Dashboard.print_info("Monthly prediction feature requires historical data accumulation.")
-        Dashboard.print_info("After 14+ days of sales data, personalized predictions will be available.")
+        if month_matches:
+            historical_avg_daily = np.mean(month_matches)
+        else:
+            # Try Tier 2: Recent overall average (3-month trend)
+            daily_stats = self.sales_analytics.get_daily_average()
+            if daily_stats.get('total_transaction_days', 0) > 0:
+                historical_avg_daily = daily_stats.get('avg_daily_units')
+
+        # Integrated Decision Intelligence Layer
+        decision_layer = DecisionIntelligenceLayer(
+            store_size=size,
+            investment=investment,
+            margin_percent=margin
+        )
         
-        # Show current data status
-        sales = self.sales_analytics.load_sales_data()
-        if len(sales) > 0:
-            unique_dates = len(set(s['Date'] for s in sales))
-            Dashboard.print_success(f"Current data: {len(sales)} transactions, {unique_dates} days")
+        avg_price = 100  # Assumed system-wide average
+        business_results = decision_layer.process_prediction(
+            raw_daily_units=raw_sales, 
+            avg_unit_price=avg_price,
+            month_num=target_month,
+            historical_avg_units=historical_avg_daily
+        )
         
+        # Inventory Optimization (using system-wide aggregates for this view)
+        # In a real scenario, this would be per-product, but for the monthly forecast 
+        # we provide a representative optimization.
+        inventory_results = decision_layer.optimize_inventory(
+            predicted_daily_demand=business_results['adjusted_daily_units'],
+            current_stock=1000, # Example placeholder for total store stock
+            std_dev_demand=business_results['adjusted_daily_units'] * 0.15 # 15% variability
+        )
+
+        # Present results
+        Dashboard.print_section("BUSINESS-AWARE DECISION INTELLIGENCE")
+        
+        # Display Core Metrics
+        headers = ['Metric', 'Daily (Units)', 'Monthly (Units)', 'Monthly Revenue', 'Monthly Profit']
+        rows = [[
+            'Adjusted Forecast',
+            f"{business_results['adjusted_daily_units']:.1f}",
+            f"{business_results['monthly_units']:.0f}",
+            f"Rs.{business_results['monthly_revenue']:,.2f}",
+            f"Rs.{business_results['expected_profit']:,.2f}"
+        ]]
+        Dashboard.print_table(headers, rows, [20, 15, 15, 18, 18])
+
+        # Display Decisions & Constraints
+        print(f"\n{Dashboard.COLORS['BOLD']}Strategic Decisions:{Dashboard.COLORS['END']}")
+        print(f"  ● Investment Scaling: {business_results['scaling_factor']:.2f}x")
+        print(f"  ● {business_results['business_interpretation']}")
+        
+        # Display Inventory & Risk
+        print(f"\n{Dashboard.COLORS['BOLD']}Inventory Optimization:{Dashboard.COLORS['END']}")
+        print(f"  ● Safety Stock Level: {inventory_results['safety_stock']} units")
+        print(f"  ● Reorder Point: {inventory_results['reorder_point']} units")
+        status_color = Dashboard.COLORS['GREEN'] if inventory_results['risk_level'] == 'LOW' else Dashboard.COLORS['YELLOW'] if inventory_results['risk_level'] == 'MEDIUM' else Dashboard.COLORS['RED']
+        print(f"  ● Risk Level: {status_color}{inventory_results['risk_level']}{Dashboard.COLORS['END']} ({inventory_results['days_of_supply']} days supply)")
+        
+        if inventory_results['reorder_needed']:
+            print(f"  ● {Dashboard.COLORS['RED']}REORDER RECOMMENDED: {inventory_results['recommended_reorder_qty']} units{Dashboard.COLORS['END']}")
+        else:
+            print(f"  ● {Dashboard.COLORS['GREEN']}Inventory levels are stable.{Dashboard.COLORS['END']}")
+
+        print(f"\n{Dashboard.COLORS['CYAN']}Interpretation:{Dashboard.COLORS['END']}")
+        mode = "Historical + Seasonal" if historical_avg_daily else "Investment-Scaled"
+        print(f"Predictions processed in {mode} mode, aligning ML outputs with ")
+        print(f"real-world constraints of a {size} store with Rs.{investment:,.0f} investment.\n")
+        
+        if not historical_avg_daily:
+            print(f"{Dashboard.COLORS['YELLOW']}Note: Forecast is based on initial investment as no historical data was found.{Dashboard.COLORS['END']}")
         input(f"\n{Dashboard.COLORS['BOLD']}Press Enter to continue...{Dashboard.COLORS['END']}")
+        return
 
 
 def main():

@@ -7,9 +7,10 @@ Uses historical data from base_processed.csv
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 import warnings
+from analytics.decision_intelligence import DecisionIntelligenceLayer
 
 warnings.filterwarnings("ignore")
 
@@ -110,13 +111,19 @@ class SalesPredictor:
         }
         return months.get(month_num, 'Unknown')
     
-    def predict_category_sales(self, month_num: int, store_type: str = 'Medium') -> Dict:
+    def predict_category_sales(self, 
+                               month_num: int, 
+                               store_type: str = 'Medium', 
+                               investment: Optional[float] = None,
+                               historical_context: Optional[float] = None) -> Dict:
         """
-        Predict sales for each category in a specific month
+        Predict sales for each category in a specific month with business logic
         
         Args:
             month_num: Month number (1-12)
             store_type: Type of store (Small, Medium, Supermarket)
+            investment: Actual store investment for scaling
+            historical_context: Historical monthly average units
         
         Returns:
             Dictionary with category predictions
@@ -137,14 +144,39 @@ class SalesPredictor:
         for category, stats in self.category_stats.items():
             base_daily_units = stats['avg_daily_units']
             base_daily_revenue = stats['avg_daily_revenue']
+            business_interpretation = ""
             
-            # Apply multipliers
-            predicted_daily_units = base_daily_units * store_multiplier * month_multiplier
-            predicted_daily_revenue = base_daily_revenue * store_multiplier * month_multiplier
-            
-            # Month has 30 days on average
-            predicted_monthly_units = predicted_daily_units * 30
-            predicted_monthly_revenue = predicted_daily_revenue * 30
+            # Integrated Decision Intelligence Logic
+            if investment is not None:
+                # Initialize layer for this store
+                decision_layer = DecisionIntelligenceLayer(
+                    store_size=store_type,
+                    investment=investment,
+                    margin_percent=15.0 # Default fallback margin
+                )
+                
+                # Process the raw prediction through business logic
+                cat_history = historical_context / len(self.category_stats) if historical_context else None
+                
+                business_aware = decision_layer.process_prediction(
+                    raw_daily_units=base_daily_units * store_multiplier * month_multiplier,
+                    avg_unit_price=stats['avg_price'],
+                    month_num=month_num,
+                    historical_avg_units=cat_history
+                )
+                
+                # Update with business-aware metrics
+                predicted_daily_units = business_aware['adjusted_daily_units']
+                predicted_daily_revenue = business_aware['monthly_revenue'] / 30
+                predicted_monthly_units = business_aware['monthly_units']
+                predicted_monthly_revenue = business_aware['monthly_revenue']
+                business_interpretation = business_aware['business_interpretation']
+            else:
+                # Standard multiplier logic (Fallback)
+                predicted_daily_units = base_daily_units * store_multiplier * month_multiplier
+                predicted_daily_revenue = base_daily_revenue * store_multiplier * month_multiplier
+                predicted_monthly_units = predicted_daily_units * 30
+                predicted_monthly_revenue = predicted_daily_revenue * 30
             
             predictions[category] = {
                 'predicted_monthly_units': round(predicted_monthly_units, 2),
@@ -152,7 +184,8 @@ class SalesPredictor:
                 'predicted_daily_units': round(predicted_daily_units, 2),
                 'predicted_daily_revenue': round(predicted_daily_revenue, 2),
                 'avg_price': round(stats['avg_price'], 2),
-                'demand_level': stats['demand_level']
+                'demand_level': stats['demand_level'],
+                'interpretation': business_interpretation
             }
         
         return predictions
@@ -162,7 +195,7 @@ class SalesPredictor:
         Generate product recommendations based on investment and predicted sales
         
         Args:
-            investment: Total investment amount (₹)
+            investment: Total investment amount (Rs.)
             month_num: Month number when shop opens (1-12)
             store_type: Type of store (Small, Medium, Supermarket)
         
@@ -172,8 +205,8 @@ class SalesPredictor:
         if self.df is None:
             return []
         
-        # Get category predictions
-        category_predictions = self.predict_category_sales(month_num, store_type)
+        # Get category predictions (Scaled by investment)
+        category_predictions = self.predict_category_sales(month_num, store_type, investment=investment)
         
         # Calculate investment allocation per category based on predicted revenue
         total_predicted_revenue = sum(pred['predicted_monthly_revenue'] 
@@ -234,7 +267,7 @@ class SalesPredictor:
                 cost = recommended_quantity * avg_price
                 
                 # Only include if cost is reasonable and we haven't exceeded budget
-                if cost > 500 and allocated_investment + cost <= investment * 0.85:
+                if cost > 500 and allocated_investment + cost <= investment * 0.95:
                     product_demand_share = (total_revenue / self.df[self.df['Category'] == category]['Revenue'].sum() * 100) if len(prod_data) > 0 else 0
                     
                     recommendations.append({
@@ -256,10 +289,10 @@ class SalesPredictor:
         
         return recommendations
     
-    def display_sales_prediction(self, month_num: int, store_type: str = 'Medium'):
-        """Display formatted sales prediction for a month"""
+    def display_sales_prediction(self, month_num: int, store_type: str = 'Medium', investment: Optional[float] = None):
+        """Display formatted sales prediction for a month with business insights"""
         month_name = self.get_month_name(month_num)
-        predictions = self.predict_category_sales(month_num, store_type)
+        predictions = self.predict_category_sales(month_num, store_type, investment=investment)
         
         print(f"\n{'='*70}")
         print(f"📊 SALES PREDICTION FOR {month_name.upper()} ({store_type} Store)")
@@ -270,9 +303,9 @@ class SalesPredictor:
         
         for category, pred in predictions.items():
             print(f"📦 {category}")
-            print(f"   Daily: {pred['predicted_daily_units']:.0f} units | ₹{pred['predicted_daily_revenue']:,.0f}")
-            print(f"   Monthly: {pred['predicted_monthly_units']:.0f} units | ₹{pred['predicted_monthly_revenue']:,.0f}")
-            print(f"   Avg Price: ₹{pred['avg_price']:.2f} | Demand: {pred['demand_level']}")
+            print(f"   Daily: {pred['predicted_daily_units']:.0f} units | Rs.{pred['predicted_daily_revenue']:,.0f}")
+            print(f"   Monthly: {pred['predicted_monthly_units']:.0f} units | Rs.{pred['predicted_monthly_revenue']:,.0f}")
+            print(f"   Avg Price: Rs.{pred['avg_price']:.2f} | Demand: {pred['demand_level']}")
             print()
             
             total_predicted_units += pred['predicted_monthly_units']
@@ -281,8 +314,8 @@ class SalesPredictor:
         print(f"{'='*70}")
         print(f"📈 TOTAL PREDICTION FOR {month_name.upper()}")
         print(f"   Monthly Units: {total_predicted_units:,.0f}")
-        print(f"   Monthly Revenue: ₹{total_predicted_revenue:,.0f}")
-        print(f"   Daily Average Revenue: ₹{total_predicted_revenue/30:,.0f}")
+        print(f"   Monthly Revenue: Rs.{total_predicted_revenue:,.0f}")
+        print(f"   Daily Average Revenue: Rs.{total_predicted_revenue/30:,.0f}")
         print(f"{'='*70}\n")
     
     def display_product_recommendations(self, investment: float, month_num: int, store_type: str = 'Medium'):
@@ -293,7 +326,7 @@ class SalesPredictor:
         print(f"\n{'='*90}")
         print(f"🛒 SMART PRODUCT RECOMMENDATIONS FOR {month_name.upper()}")
         print(f"{'='*90}")
-        print(f"📊 Store Type: {store_type} | 💰 Total Investment: ₹{investment:,.0f}")
+        print(f"📊 Store Type: {store_type} | 💰 Total Investment: Rs.{investment:,.0f}")
         print(f"{'='*90}\n")
         
         if not recommendations:
@@ -310,8 +343,8 @@ class SalesPredictor:
             if len(product_display) > 23:
                 product_display = product_display[:20] + "..."
             
-            print(f"{product_display:<25} {rec['quantity']:>6} ₹{rec['unit_price']:>8.2f} "
-                  f"₹{rec['total_cost']:>10,.0f} {rec['percentage_investment']:>9.1f}% {rec['demand_level']:<10}")
+            print(f"{product_display:<25} {rec['quantity']:>6} Rs.{rec['unit_price']:>8.2f} "
+                  f"Rs.{rec['total_cost']:>10,.0f} {rec['percentage_investment']:>9.1f}% {rec['demand_level']:<10}")
             
             total_cost += rec['total_cost']
         
@@ -323,13 +356,13 @@ class SalesPredictor:
         print(f"\n{'='*90}")
         print(f"💰 INVESTMENT ALLOCATION")
         print(f"{'='*90}")
-        print(f"  Total Investment      : ₹{investment:>15,.2f}")
-        print(f"  Product Inventory     : ₹{total_cost:>15,.2f} ({allocated_percentage:.1f}%)")
-        print(f"  Operations/Buffer     : ₹{remaining_investment:>15,.2f} ({100-allocated_percentage:.1f}%)")
+        print(f"  Total Investment      : Rs.{investment:>15,.2f}")
+        print(f"  Product Inventory     : Rs.{total_cost:>15,.2f} ({allocated_percentage:.1f}%)")
+        print(f"  Operations/Buffer     : Rs.{remaining_investment:>15,.2f} ({100-allocated_percentage:.1f}%)")
         print(f"{'='*90}\n")
         
-        # Show expected revenue
-        category_predictions = self.predict_category_sales(month_num, store_type)
+        # Show expected revenue (Scaled by investment)
+        category_predictions = self.predict_category_sales(month_num, store_type, investment=investment)
         total_monthly_revenue = sum(pred['predicted_monthly_revenue'] for pred in category_predictions.values())
         total_monthly_units = sum(pred['predicted_monthly_units'] for pred in category_predictions.values())
         
@@ -337,9 +370,9 @@ class SalesPredictor:
         print(f"📈 EXPECTED MONTHLY PERFORMANCE")
         print(f"{'='*90}")
         print(f"  Predicted Units       : {total_monthly_units:>15,.0f}")
-        print(f"  Predicted Revenue     : ₹{total_monthly_revenue:>15,.0f}")
+        print(f"  Predicted Revenue     : Rs.{total_monthly_revenue:>15,.0f}")
         daily_revenue = total_monthly_revenue / 30
-        print(f"  Daily Average Revenue : ₹{daily_revenue:>15,.0f}")
+        print(f"  Daily Average Revenue : Rs.{daily_revenue:>15,.0f}")
         roi_percentage = ((total_monthly_revenue - total_cost) / total_cost) * 100
         print(f"  Initial ROI (Monthly) : {roi_percentage:>15.1f}%")
         print(f"{'='*90}\n")
