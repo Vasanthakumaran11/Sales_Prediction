@@ -11,6 +11,7 @@ from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 import warnings
 from analytics.decision_intelligence import DecisionIntelligenceLayer
+from analytics.market_realism import MarketRealismLayer
 
 warnings.filterwarnings("ignore")
 
@@ -115,7 +116,9 @@ class SalesPredictor:
                                month_num: int, 
                                store_type: str = 'Medium', 
                                investment: Optional[float] = None,
-                               historical_context: Optional[float] = None) -> Dict:
+                               historical_context: Optional[float] = None,
+                               months_active: int = 12,
+                               location_type: str = 'Urban') -> Dict:
         """
         Predict sales for each category in a specific month with business logic
         
@@ -124,6 +127,8 @@ class SalesPredictor:
             store_type: Type of store (Small, Medium, Supermarket)
             investment: Actual store investment for scaling
             historical_context: Historical monthly average units
+            months_active: Number of months the store has been active (for cold start adjustment)
+            location_type: Location type ('Urban', 'Semi-Urban', 'Rural') for demand adjustment
         
         Returns:
             Dictionary with category predictions
@@ -171,26 +176,64 @@ class SalesPredictor:
                 predicted_monthly_units = business_aware['monthly_units']
                 predicted_monthly_revenue = business_aware['monthly_revenue']
                 business_interpretation = business_aware['business_interpretation']
+                
+                # Apply Market Realism Layer
+                market_layer = MarketRealismLayer(months_active=months_active, location_type=location_type)
+                market_realism = market_layer.apply_market_realism(predicted_monthly_revenue)
+                
+                # Update with market-realistic metrics
+                realistic_monthly_revenue = market_realism['realistic_revenue']
+                realistic_daily_revenue = realistic_monthly_revenue / 30
+                realistic_monthly_units = predicted_monthly_units * market_realism['total_adjustment_factor']
+                realistic_daily_units = realistic_monthly_units / 30
+                
+                # Update business interpretation
+                business_interpretation += " " + market_realism['business_explanation']
+                
             else:
                 # Standard multiplier logic (Fallback)
                 predicted_daily_units = base_daily_units * store_multiplier * month_multiplier
                 predicted_daily_revenue = base_daily_revenue * store_multiplier * month_multiplier
                 predicted_monthly_units = predicted_daily_units * 30
                 predicted_monthly_revenue = predicted_daily_revenue * 30
+                
+                # Apply basic market realism even without investment
+                market_layer = MarketRealismLayer(months_active=months_active, location_type=location_type)
+                market_realism = market_layer.apply_market_realism(predicted_monthly_revenue)
+                
+                realistic_monthly_revenue = market_realism['realistic_revenue']
+                realistic_daily_revenue = realistic_monthly_revenue / 30
+                realistic_monthly_units = predicted_monthly_units * market_realism['total_adjustment_factor']
+                realistic_daily_units = realistic_monthly_units / 30
+                business_interpretation = market_realism['business_explanation']
             
             predictions[category] = {
                 'predicted_monthly_units': round(predicted_monthly_units, 2),
                 'predicted_monthly_revenue': round(predicted_monthly_revenue, 2),
                 'predicted_daily_units': round(predicted_daily_units, 2),
                 'predicted_daily_revenue': round(predicted_daily_revenue, 2),
+                'realistic_monthly_units': round(realistic_monthly_units, 2),
+                'realistic_monthly_revenue': round(realistic_monthly_revenue, 2),
+                'realistic_daily_units': round(realistic_daily_units, 2),
+                'realistic_daily_revenue': round(realistic_daily_revenue, 2),
                 'avg_price': round(stats['avg_price'], 2),
                 'demand_level': stats['demand_level'],
-                'interpretation': business_interpretation
+                'interpretation': business_interpretation,
+                'market_adjustments': {
+                    'cold_start_factor': market_realism['cold_start_factor'],
+                    'location_factor': market_realism['location_factor'],
+                    'total_adjustment': market_realism['total_adjustment_factor']
+                }
             }
         
         return predictions
     
-    def recommend_products(self, investment: float, month_num: int, store_type: str = 'Medium') -> List[Dict]:
+    def recommend_products(self, 
+                          investment: float, 
+                          month_num: int, 
+                          store_type: str = 'Medium',
+                          months_active: int = 12,
+                          location_type: str = 'Urban') -> List[Dict]:
         """
         Generate product recommendations based on investment and predicted sales
         
@@ -198,6 +241,8 @@ class SalesPredictor:
             investment: Total investment amount (Rs.)
             month_num: Month number when shop opens (1-12)
             store_type: Type of store (Small, Medium, Supermarket)
+            months_active: Number of months the store has been active
+            location_type: Location type for demand adjustment
         
         Returns:
             List of product recommendations with quantities and prices
@@ -205,25 +250,28 @@ class SalesPredictor:
         if self.df is None:
             return []
         
-        # Get category predictions (Scaled by investment)
-        category_predictions = self.predict_category_sales(month_num, store_type, investment=investment)
+        # Get category predictions (Scaled by investment and market realism)
+        category_predictions = self.predict_category_sales(
+            month_num, store_type, investment=investment,
+            months_active=months_active, location_type=location_type
+        )
         
-        # Calculate investment allocation per category based on predicted revenue
-        total_predicted_revenue = sum(pred['predicted_monthly_revenue'] 
+        # Calculate investment allocation per category based on REALISTIC revenue
+        total_realistic_revenue = sum(pred['realistic_monthly_revenue'] 
                                      for pred in category_predictions.values())
         
         recommendations = []
         allocated_investment = 0
         
-        # Sort categories by predicted revenue (descending)
+        # Sort categories by realistic revenue (descending)
         sorted_categories = sorted(category_predictions.items(), 
-                                  key=lambda x: x[1]['predicted_monthly_revenue'], 
+                                  key=lambda x: x[1]['realistic_monthly_revenue'], 
                                   reverse=True)
         
         for category, pred in sorted_categories:
-            # Allocate investment proportionally to predicted revenue
-            if total_predicted_revenue > 0:
-                category_investment = (pred['predicted_monthly_revenue'] / total_predicted_revenue) * investment
+            # Allocate investment proportionally to REALISTIC revenue
+            if total_realistic_revenue > 0:
+                category_investment = (pred['realistic_monthly_revenue'] / total_realistic_revenue) * investment
             else:
                 category_investment = investment / len(category_predictions)
             
@@ -247,14 +295,11 @@ class SalesPredictor:
                 avg_daily_demand = prod_data['Units_Sold'].mean()
                 total_revenue = prod_data['Revenue'].sum()
                 
-                # Calculate recommended quantity
-                recommended_quantity = int(investment_per_product / avg_price)
-                
-                # Adjust based on demand pattern
-                monthly_predicted_units = pred['predicted_monthly_units']
-                if monthly_predicted_units > 0 and num_products > 0:
+                # Calculate recommended quantity based on REALISTIC demand
+                realistic_monthly_units = pred['realistic_monthly_units']
+                if realistic_monthly_units > 0 and num_products > 0:
                     # Allocate proportionally but ensure reasonable quantities
-                    demand_share = monthly_predicted_units / num_products
+                    demand_share = realistic_monthly_units / num_products
                     # Buy 1.3x of predicted demand for safety stock
                     demand_based_quantity = int(demand_share * 1.3 / avg_daily_demand)
                     
@@ -277,7 +322,7 @@ class SalesPredictor:
                         'unit_price': round(avg_price, 2),
                         'total_cost': round(cost, 2),
                         'percentage_investment': round((cost / investment) * 100, 2),
-                        'predicted_monthly_units': round(pred['predicted_monthly_units'] / num_products, 2),
+                        'predicted_monthly_units': round(pred['realistic_monthly_units'] / num_products, 2),
                         'demand_level': pred['demand_level'],
                         'demand_percentage': round(product_demand_share, 1)
                     })
@@ -289,45 +334,84 @@ class SalesPredictor:
         
         return recommendations
     
-    def display_sales_prediction(self, month_num: int, store_type: str = 'Medium', investment: Optional[float] = None):
+    def display_sales_prediction(self, 
+                                month_num: int, 
+                                store_type: str = 'Medium', 
+                                investment: Optional[float] = None,
+                                months_active: int = 12,
+                                location_type: str = 'Urban'):
         """Display formatted sales prediction for a month with business insights"""
         month_name = self.get_month_name(month_num)
-        predictions = self.predict_category_sales(month_num, store_type, investment=investment)
+        predictions = self.predict_category_sales(
+            month_num, store_type, investment=investment, 
+            months_active=months_active, location_type=location_type
+        )
         
-        print(f"\n{'='*70}")
-        print(f"📊 SALES PREDICTION FOR {month_name.upper()} ({store_type} Store)")
-        print(f"{'='*70}\n")
+        print(f"\n{'='*100}")
+        print(f"📊 SALES PREDICTION FOR {month_name.upper()} ({store_type} Store - {location_type})")
+        print(f"{'='*100}\n")
         
         total_predicted_units = 0
         total_predicted_revenue = 0
+        total_realistic_units = 0
+        total_realistic_revenue = 0
         
         for category, pred in predictions.items():
             print(f"📦 {category}")
-            print(f"   Daily: {pred['predicted_daily_units']:.0f} units | Rs.{pred['predicted_daily_revenue']:,.0f}")
-            print(f"   Monthly: {pred['predicted_monthly_units']:.0f} units | Rs.{pred['predicted_monthly_revenue']:,.0f}")
+            print(f"   Realistic Revenue (Market-Adjusted):")
+            print(f"     Daily: {pred['realistic_daily_units']:.0f} units | Rs.{pred['realistic_daily_revenue']:,.0f}")
+            print(f"     Monthly: {pred['realistic_monthly_units']:.0f} units | Rs.{pred['realistic_monthly_revenue']:,.0f}")
             print(f"   Avg Price: Rs.{pred['avg_price']:.2f} | Demand: {pred['demand_level']}")
+            if 'market_adjustments' in pred:
+                adj = pred['market_adjustments']
+                print(f"   Adjustments: Cold Start {adj['cold_start_factor']:.1f}x | Location {adj['location_factor']:.1f}x | Total {adj['total_adjustment']:.2f}x")
             print()
             
             total_predicted_units += pred['predicted_monthly_units']
             total_predicted_revenue += pred['predicted_monthly_revenue']
+            total_realistic_units += pred['realistic_monthly_units']
+            total_realistic_revenue += pred['realistic_monthly_revenue']
         
-        print(f"{'='*70}")
+        print(f"{'='*100}")
         print(f"📈 TOTAL PREDICTION FOR {month_name.upper()}")
-        print(f"   Monthly Units: {total_predicted_units:,.0f}")
-        print(f"   Monthly Revenue: Rs.{total_predicted_revenue:,.0f}")
-        print(f"   Daily Average Revenue: Rs.{total_predicted_revenue/30:,.0f}")
-        print(f"{'='*70}\n")
+        print(f"   Realistic Monthly Units: {total_realistic_units:,.0f}")
+        print(f"   Realistic Monthly Revenue: Rs.{total_realistic_revenue:,.0f}")
+        print(f"   Daily Average Revenue: Rs.{total_realistic_revenue/30:,.0f}")
+        
+        # Show market context
+        market_layer = MarketRealismLayer(months_active=months_active, location_type=location_type)
+        context = market_layer.get_market_context()
+        print(f"\n🏪 MARKET CONTEXT:")
+        print(f"   Store Maturity: {context['maturity_description']}")
+        print(f"   Location Impact: {context['location_description']}")
+        print(f"   Cold Start Factor: {context['cold_start_factor']:.1f}x")
+        print(f"   Location Factor: {context['location_factor']:.1f}x")
+        
+        # Business explanation
+        if total_realistic_revenue < total_predicted_revenue:
+            adjustment_pct = ((total_predicted_revenue - total_realistic_revenue) / total_predicted_revenue) * 100
+            print(f"   Revenue Adjustment: {adjustment_pct:.1f}% reduction for market realism")
+        
+        print(f"{'='*100}\n")
     
-    def display_product_recommendations(self, investment: float, month_num: int, store_type: str = 'Medium'):
+    def display_product_recommendations(self, 
+                                       investment: float, 
+                                       month_num: int, 
+                                       store_type: str = 'Medium',
+                                       months_active: int = 12,
+                                       location_type: str = 'Urban'):
         """Display formatted product recommendations"""
         month_name = self.get_month_name(month_num)
-        recommendations = self.recommend_products(investment, month_num, store_type)
+        recommendations = self.recommend_products(
+            investment, month_num, store_type, months_active, location_type
+        )
         
-        print(f"\n{'='*90}")
+        print(f"\n{'='*110}")
         print(f"🛒 SMART PRODUCT RECOMMENDATIONS FOR {month_name.upper()}")
-        print(f"{'='*90}")
+        print(f"{'='*110}")
         print(f"📊 Store Type: {store_type} | 💰 Total Investment: Rs.{investment:,.0f}")
-        print(f"{'='*90}\n")
+        print(f"🏪 Store Age: {months_active} months | 📍 Location: {location_type}")
+        print(f"{'='*110}\n")
         
         if not recommendations:
             print("❌ No recommendations available")
@@ -353,13 +437,13 @@ class SalesPredictor:
         remaining_investment = investment - total_cost
         allocated_percentage = (total_cost / investment) * 100
         
-        print(f"\n{'='*90}")
-        print(f"💰 INVESTMENT ALLOCATION")
-        print(f"{'='*90}")
+        print(f"\n{'='*110}")
+        print(f"💰 INVESTMENT ALLOCATION (Based on Realistic Revenue Projections)")
+        print(f"{'='*110}")
         print(f"  Total Investment      : Rs.{investment:>15,.2f}")
         print(f"  Product Inventory     : Rs.{total_cost:>15,.2f} ({allocated_percentage:.1f}%)")
         print(f"  Operations/Buffer     : Rs.{remaining_investment:>15,.2f} ({100-allocated_percentage:.1f}%)")
-        print(f"{'='*90}\n")
+        print(f"{'='*110}\n")
         
         # Show expected revenue (Scaled by investment)
         category_predictions = self.predict_category_sales(month_num, store_type, investment=investment)

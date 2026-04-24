@@ -89,7 +89,9 @@ class SmartGroceryApp:
             predictor.display_sales_prediction(
                 month_info['opening_month'], 
                 store_info['store_type'],
-                investment=store_info['investment']
+                investment=store_info['investment'],
+                months_active=month_info['months_active'],
+                location_type=month_info['location_type']
             )
             
             input(f"\n{Dashboard.COLORS['BOLD']}Press Enter to see product recommendations...{Dashboard.COLORS['END']}")
@@ -98,7 +100,9 @@ class SmartGroceryApp:
             predictor.display_product_recommendations(
                 store_info['investment'],
                 month_info['opening_month'],
-                store_info['store_type']
+                store_info['store_type'],
+                months_active=month_info['months_active'],
+                location_type=month_info['location_type']
             )
             
         except Exception as e:

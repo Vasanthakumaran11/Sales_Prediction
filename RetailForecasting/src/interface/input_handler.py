@@ -273,10 +273,10 @@ class InputHandler:
     @staticmethod
     def get_month_for_prediction() -> Optional[Dict]:
         """
-        Get current month and shop opening month for sales prediction
+        Get current month, shop opening month, store age, and location for sales prediction
         
         Returns:
-            Dictionary with current_month and opening_month (1-12), or None if cancelled
+            Dictionary with current_month, opening_month (1-12), months_active, location_type, or None if cancelled
         """
         Dashboard.print_header("📅 SALES PREDICTION SETUP", 70)
         
@@ -318,9 +318,42 @@ class InputHandler:
                 else:
                     Dashboard.print_warning("Please select between 1 and 12")
             
+            # Store age (months active)
+            print("\n🏪 How many months has your store been operational?")
+            print("   (Enter 1 for new stores opening this month, 2-3 for early-stage, 4+ for mature)")
+            
+            months_active = None
+            while months_active is None:
+                choice = Dashboard.get_input("Enter months active (1-24 or more): ", input_type='int')
+                if choice and choice >= 1:
+                    months_active = min(choice, 24)  # Cap at 24 for practical purposes
+                else:
+                    Dashboard.print_warning("Please enter a valid number of months (minimum 1)")
+            
+            # Location type
+            print("\n📍 What type of location is your store in?")
+            print("   This affects customer footfall and purchasing power:")
+            for idx, loc in enumerate(InputHandler.VALID_LOCATIONS, 1):
+                desc = {
+                    'Urban': 'High footfall, high purchasing power',
+                    'Semi-Urban': 'Moderate footfall and purchasing power', 
+                    'Rural': 'Lower footfall, lower purchasing power'
+                }
+                print(f"  {idx}) {loc} - {desc[loc]}")
+            
+            location_type = None
+            while location_type is None:
+                choice = Dashboard.get_input("Enter location type (1-3): ", input_type='int')
+                if 1 <= choice <= 3:
+                    location_type = InputHandler.VALID_LOCATIONS[choice - 1]
+                else:
+                    Dashboard.print_warning("Please select between 1 and 3")
+            
             return {
                 'current_month': current_month,
                 'opening_month': opening_month,
+                'months_active': months_active,
+                'location_type': location_type,
                 'current_month_name': months[current_month - 1],
                 'opening_month_name': months[opening_month - 1]
             }

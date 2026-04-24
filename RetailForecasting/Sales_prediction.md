@@ -9,7 +9,7 @@
 
 A production-grade machine learning system for retail analytics that:
 - Generates 90-day synthetic training data (3,780 transactions)
-- Trains 5 competing ML algorithms for regression
+- Trains 7 competing ML algorithms for regression
 - Selects the best-performing model automatically
 - Provides accurate demand forecasting and inventory optimization
 - Enables intelligent product recommendations based on seasonality
@@ -195,6 +195,7 @@ Feature Engineering Pipeline:
 | 3 | **Random Forest** | Ensemble | Robust, handles interactions |
 | 4 | **XGBoost** | Boosting | Gradient-based optimization |
 | 5 | **LightGBM** | Boosting | Fast, efficient training |
+| 6 | 
 
 #### Model Hyperparameters
 
@@ -530,6 +531,106 @@ Analyzes:
     ├─ Investment allocation
     ├─ Expected ROI
     └─ Daily revenue average
+```
+
+### Feature 5.1: Decision Intelligence Layer
+
+```python
+# src/analytics/decision_intelligence.py (200+ lines)
+
+Business-aware processing layer that transforms raw ML predictions into practical decisions:
+
+Core Functions:
+├─ Budget Constraint Application:
+│   ├─ Prevents unrealistic revenue projections
+│   ├─ Uses investment-based soft caps
+│   ├─ Applies logarithmic dampening for excess
+│   └─ Seasonal multipliers (Festive: 2.5×, Regular: 1.5×)
+│
+├─ Historical Baseline Blending:
+│   ├─ Combines new predictions with store history
+│   ├─ Default weight: 70% historical, 30% new
+│   ├─ Prevents over-optimistic projections
+│   └─ Context-aware scaling
+│
+├─ Capacity Constraints:
+│   ├─ Small stores: 800 units/day max
+│   ├─ Medium stores: 3,500 units/day max
+│   ├─ Large stores: 15,000 units/day max
+│   └─ Enforces physical limitations
+│
+├─ Seasonal Intelligence:
+│   ├─ January: +30% (Pongal/New Year)
+│   ├─ April: +25% (Ramzan)
+│   ├─ October: +40% (Diwali)
+│   ├─ November: +30% (Post-Festive)
+│   └─ December: +35% (Christmas/Year-end)
+│
+└─ Investment Scaling:
+    ├─ Base capital targets (Small: ₹2L, Medium: ₹10L, Large: ₹50L)
+    ├─ Dynamic scaling based on actual investment
+    └─ Profit margin calculations (15% default)
+```
+
+### Feature 5.2: Market Realism Layer ⭐ **NEW**
+
+```python
+# src/analytics/market_realism.py (150+ lines)
+
+Final processing layer that adjusts predictions for real-world market conditions:
+
+Cold Start Adjustments (Store Maturity):
+├─ Month 1: 0.4× factor (40% of predicted sales)
+├─ Months 2-3: 0.7× factor (70% of predicted sales)
+├─ Months 4+: 1.0× factor (100% of predicted sales)
+└─ Accounts for new store stabilization period
+
+Location-Based Demand Factors:
+├─ Urban: 1.0× (High footfall, high purchasing power)
+├─ Semi-Urban: 0.8× (Moderate footfall and purchasing power)
+├─ Rural: 0.6× (Lower footfall, lower purchasing power)
+└─ Reflects actual customer demographics
+
+Realistic Revenue Calculation:
+└─ realistic_revenue = predicted_revenue × cold_start_factor × location_factor
+
+Business Explanations:
+├─ "Revenue reduced due to new store stabilization period"
+├─ "Revenue adjusted for location demand conditions"
+├─ "No market realism adjustments applied" (for mature urban stores)
+└─ Clear reasoning for all adjustments
+
+Enhanced Output:
+├─ Raw predicted revenue (pre-market adjustments)
+├─ Realistic adjusted revenue (post-market adjustments)
+├─ Individual adjustment factors (cold start + location)
+├─ Business interpretation and explanations
+└─ Market context information
+```
+
+### Prediction Pipeline Flow:
+
+```
+Raw ML Prediction (XGBoost/LSTM)
+        ↓
+Decision Intelligence Layer
+    ├─ Budget constraints
+    ├─ Capacity limits
+    ├─ Seasonal adjustments
+    ├─ Historical blending
+    └─ Investment scaling
+        ↓
+Market Realism Layer ⭐ **NEW**
+    ├─ Cold start factors
+    ├─ Location demand factors
+    ├─ Business explanations
+    └─ Realistic revenue calculation
+        ↓
+Final Output
+    ├─ Raw prediction (theoretical)
+    ├─ Realistic revenue (practical)
+    ├─ Adjustment factors
+    └─ Business interpretation
 ```
 
 ### Feature 6: Inventory Optimization
