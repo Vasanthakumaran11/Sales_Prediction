@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
+  --background: #f4f4f5; /* zinc-100 */
+  --foreground: #09090b; /* zinc-950 */
+}
+
+.dark {
   --background: #09090b; /* zinc-950 */
   --foreground: #fafafa; /* zinc-50 */
 }
@@ -17,4 +24,5 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
