@@ -59,6 +59,18 @@ export default function Gateway({ onSelectStore, onSelectChain }) {
     };
   };
 
+  // Generate live capital allocation breakdown for the pre-launch insights deck
+  const getCapitalAllocation = (investment) => {
+    const amt = parseFloat(investment) || 150000;
+    return [
+      { name: 'Staples & Grains', value: Math.round(amt * 0.35), pct: '35%', color: 'bg-emerald-500' },
+      { name: 'Beverages', value: Math.round(amt * 0.20), pct: '20%', color: 'bg-teal-500' },
+      { name: 'Snacks & Biscuits', value: Math.round(amt * 0.20), pct: '20%', color: 'bg-amber-500' },
+      { name: 'Perishables', value: Math.round(amt * 0.15), pct: '15%', color: 'bg-blue-500' },
+      { name: 'Personal Care', value: Math.round(amt * 0.10), pct: '10%', color: 'bg-rose-500' }
+    ];
+  };
+
   const alloc = getDonutAllocation(formData.investment);
 
   // Product recommendations based on month
