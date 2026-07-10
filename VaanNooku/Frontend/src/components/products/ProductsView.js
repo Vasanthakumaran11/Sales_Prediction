@@ -125,7 +125,7 @@ export default function ProductsView() {
   });
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6 font-sans px-6">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sky-200/60 pb-5">
         <div>
@@ -219,104 +219,6 @@ export default function ProductsView() {
           </div>
           <span className="text-base font-black text-slate-900 mt-1">6</span>
           <span className="text-[8px] text-rose-600 font-bold">↓ 25.0% vs last month</span>
-        </div>
-      </div>
-
-      {/* Row 2 - Focus Cards & AI Insights (5 Columns) */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {/* Top Performing */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col justify-between shadow-sm">
-          <div>
-            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Top Performing Product</span>
-            <div className="flex items-center gap-3 mt-3">
-              <span className="text-2xl">{products[3].img}</span>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 font-serif leading-tight">Tata Tea Premium 250g</h4>
-                <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-500 mt-1 font-sans">
-                  <span>Sold: <strong>12,850 Units</strong></span>
-                  <span>Revenue: <strong>₹4.82 Lakh</strong></span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <span className="text-[8px] text-emerald-600 font-bold mt-2 flex items-center gap-0.5">
-            <ArrowUpRight className="w-3 h-3" /> 24.6% vs last month
-          </span>
-        </div>
-
-        {/* Highest Margin */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col justify-between shadow-sm">
-          <div>
-            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Highest Margin</span>
-            <div className="flex items-center gap-3 mt-3">
-              <span className="text-2xl">☕</span>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 font-serif leading-tight">Nescafe Gold 100g</h4>
-                <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-500 mt-1 font-sans">
-                  <span>Margin: <strong>42.8%</strong></span>
-                  <span>Profit: <strong>₹2.14 Lakh</strong></span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <span className="text-[8px] text-emerald-600 font-bold mt-2 flex items-center gap-0.5">
-            <ArrowUpRight className="w-3 h-3" /> Premium Segment
-          </span>
-        </div>
-
-        {/* Fast Moving */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col justify-between shadow-sm">
-          <div>
-            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Fast Moving Product</span>
-            <div className="flex items-center gap-3 mt-3">
-              <span className="text-2xl">{products[0].img}</span>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 font-serif leading-tight">Amul Taaza Milk 1L</h4>
-                <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-500 mt-1 font-sans">
-                  <span>Velocity: <strong className="text-emerald-650">High</strong></span>
-                  <span>Growth: <strong>↑ 28.4%</strong></span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <span className="text-[8px] text-emerald-600 font-bold mt-2 flex items-center gap-0.5">
-            <ArrowUpRight className="w-3 h-3" /> Daily Essential
-          </span>
-        </div>
-
-        {/* Highest Revenue */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col justify-between shadow-sm">
-          <div>
-            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Highest Revenue</span>
-            <div className="flex items-center gap-3 mt-3">
-              <span className="text-2xl">{products[2].img}</span>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 font-serif leading-tight">Fortune Sunflower Oil 1L</h4>
-                <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-500 mt-1 font-sans">
-                  <span>Revenue: <strong>₹6.85 Lakh</strong></span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <span className="text-[8px] text-emerald-600 font-bold mt-2 flex items-center gap-0.5">
-            <ArrowUpRight className="w-3 h-3" /> 19.7% vs last month
-          </span>
-        </div>
-
-        {/* AI Product Insights */}
-        <div className="bg-sky-50/30 border border-sky-100 rounded-xl p-4 flex flex-col justify-between shadow-sm">
-          <div>
-            <span className="text-[9px] text-blue-600 font-bold uppercase tracking-wide flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" /> AI Product Insights
-            </span>
-            <div className="mt-2 space-y-1.5 text-[9px] text-slate-600 font-sans leading-relaxed">
-              <p>• Increase stock for Rice before Pongal. Demand may rise by 18%.</p>
-              <p>• Oil category showing strong growth trend this month.</p>
-            </div>
-          </div>
-          <button className="text-[9px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 justify-end mt-2">
-            View All Insights <ArrowRight className="w-3 h-3" />
-          </button>
         </div>
       </div>
 

@@ -1,10 +1,16 @@
+export function Skeleton({ className = "" }) {
+  return (
+    <div className={`bg-slate-200 rounded animate-pulse ${className}`} />
+  );
+}
+
 export function CardSkeleton({ className = "h-40" }) {
   return (
     <div
       className={`bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-900 rounded-2xl p-5 animate-pulse ${className}`}
     >
       <div className="h-4 w-36 bg-zinc-200 dark:bg-zinc-800 rounded mb-4" />
-      <div className="h-full w-full bg-zinc-100 dark:bg-zinc-950/60 rounded-xl" />
+      <div className="h-full w-full bg-zinc-105 dark:bg-zinc-950/60 rounded-xl" />
     </div>
   );
 }
@@ -28,3 +34,4 @@ export function PageSkeleton() {
     </div>
   );
 }
+

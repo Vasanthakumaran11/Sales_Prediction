@@ -140,9 +140,9 @@ export default function DataEntryView() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6 font-sans px-6">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sky-200/60 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sky-200/60 pb-5 px-2">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-serif">
             Daily Sales Data Entry
@@ -152,10 +152,10 @@ export default function DataEntryView() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-250 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg transition-all shadow-sm">
+          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg transition-all shadow-sm">
             <Upload className="w-3.5 h-3.5 text-slate-500" /> Import from Excel
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-250 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg transition-all shadow-sm">
+          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg transition-all shadow-sm">
             <Download className="w-3.5 h-3.5 text-slate-500" /> Download Template <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
           <button
@@ -187,7 +187,7 @@ export default function DataEntryView() {
             <select
               value={salesInfo.storeId}
               onChange={(e) => setSalesInfo((prev) => ({ ...prev, storeId: e.target.value }))}
-              className="w-full bg-slate-50 border border-slate-205 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
             >
               {STORE_PROFILES.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -206,7 +206,7 @@ export default function DataEntryView() {
                 type="date"
                 value={salesInfo.date}
                 onChange={handleDateChange}
-                className="w-full bg-slate-50 border border-slate-205 rounded-lg pl-3 pr-8 py-2 text-xs text-slate-850 focus:outline-none focus:border-sky-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-xs text-slate-850 focus:outline-none focus:border-sky-500"
               />
               <Calendar className="absolute right-2.5 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
@@ -231,7 +231,7 @@ export default function DataEntryView() {
             <select
               value={salesInfo.businessType}
               onChange={(e) => setSalesInfo((prev) => ({ ...prev, businessType: e.target.value }))}
-              className="w-full bg-slate-50 border border-slate-205 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
             >
               <option>Super Market</option>
               <option>Grocer</option>
@@ -246,7 +246,7 @@ export default function DataEntryView() {
             <select
               value={salesInfo.dataSource}
               onChange={(e) => setSalesInfo((prev) => ({ ...prev, dataSource: e.target.value }))}
-              className="w-full bg-slate-50 border border-slate-205 rounded-lg px-3 py-2 text-xs text-slate-805 focus:outline-none focus:border-sky-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
             >
               <option>Manual Entry</option>
               <option>POS Sync</option>
@@ -276,7 +276,7 @@ export default function DataEntryView() {
           </div>
           <div>
             <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Items Sold</span>
-            <span className="text-sm font-black text-slate-905 leading-none">{totalItemsSold}</span>
+            <span className="text-sm font-black text-slate-900 leading-none">{totalItemsSold}</span>
           </div>
         </div>
 
@@ -287,7 +287,7 @@ export default function DataEntryView() {
           </div>
           <div>
             <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Quantity</span>
-            <span className="text-sm font-black text-slate-905 leading-none">{totalQtySold}</span>
+            <span className="text-sm font-black text-slate-900 leading-none">{totalQtySold}</span>
           </div>
         </div>
 
@@ -297,7 +297,7 @@ export default function DataEntryView() {
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[9px] text-slate-455 uppercase font-bold tracking-wider">Average Bill Value</span>
+            <span className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider">Average Bill Value</span>
             <span className="text-sm font-black text-slate-900 leading-none">₹{Math.round(avgBillValue).toLocaleString()}</span>
           </div>
         </div>
@@ -308,7 +308,7 @@ export default function DataEntryView() {
             <Info className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[9px] text-slate-455 uppercase font-bold tracking-wider">Total Transactions</span>
+            <span className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider">Total Transactions</span>
             <span className="text-sm font-black text-slate-900 leading-none">1,320</span>
           </div>
         </div>
@@ -377,7 +377,7 @@ export default function DataEntryView() {
                     <select
                       value={row.name}
                       onChange={(e) => handleRowChange(row.id, "name", e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-205 rounded px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 font-serif font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 font-serif font-semibold"
                     >
                       {catalog.map((catItem) => (
                         <option key={catItem.name} value={catItem.name}>
@@ -398,7 +398,7 @@ export default function DataEntryView() {
                     <select
                       value={row.unit}
                       onChange={(e) => handleRowChange(row.id, "unit", e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-205 rounded px-2 py-1.5 text-xs text-slate-800 focus:outline-none"
+                      className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-800 focus:outline-none"
                     >
                       <option>pcs</option>
                       <option>kg</option>
@@ -411,7 +411,7 @@ export default function DataEntryView() {
                       type="number"
                       value={row.price}
                       onChange={(e) => handleRowChange(row.id, "price", parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-50 border border-slate-205 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
+                      className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
                     />
                   </td>
                   <td className="p-3 text-right">
@@ -419,7 +419,7 @@ export default function DataEntryView() {
                       type="number"
                       value={row.qty}
                       onChange={(e) => handleRowChange(row.id, "qty", parseInt(e.target.value) || 0)}
-                      className="w-full bg-slate-50 border border-slate-205 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
+                      className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
                     />
                   </td>
                   <td className="p-3 text-right">
@@ -427,7 +427,7 @@ export default function DataEntryView() {
                       type="number"
                       value={row.discount}
                       onChange={(e) => handleRowChange(row.id, "discount", parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-50 border border-slate-205 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
+                      className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
                     />
                   </td>
                   <td className="p-3 text-right font-semibold text-slate-900">
@@ -467,7 +467,7 @@ export default function DataEntryView() {
                 value={salesInfo.paymentMode}
                 onChange={(e) => setSalesInfo((prev) => ({ ...prev, paymentMode: e.target.value }))}
                 placeholder="e.g. Cash: 70%, Card: 20%, UPI: 10%"
-                className="w-full bg-slate-50 border border-slate-205 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
               />
             </div>
 
@@ -479,7 +479,7 @@ export default function DataEntryView() {
                 value={salesInfo.notes}
                 onChange={(e) => setSalesInfo((prev) => ({ ...prev, notes: e.target.value }))}
                 placeholder="Enter any additional notes about today's sales..."
-                className="w-full h-20 bg-slate-50 border border-slate-205 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
+                className="w-full h-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
               />
             </div>
 
@@ -570,7 +570,7 @@ export default function DataEntryView() {
         <button
           type="button"
           onClick={() => setRows([])}
-          className="px-4 py-2 border border-slate-205 text-slate-655 hover:bg-slate-50 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+          className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
         >
           Clear All <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
         </button>

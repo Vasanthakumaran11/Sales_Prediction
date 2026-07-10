@@ -70,7 +70,7 @@ export default function SalesAnalytics() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6 font-sans px-6">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sky-200/60 pb-5">
         <div>
@@ -82,13 +82,13 @@ export default function SalesAnalytics() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs font-sans">
-          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-205 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
+          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
             <Calendar className="w-3.5 h-3.5 text-slate-400" /> Jan 01, 2026 - May 17, 2026 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-205 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
+          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
             <Filter className="w-3.5 h-3.5 text-slate-400" /> Filters <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-205 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
+          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
             <Download className="w-3.5 h-3.5 text-slate-400" /> Export <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
@@ -183,7 +183,7 @@ export default function SalesAnalytics() {
             <select
               value={timeframe}
               onChange={(e) => setTimeframe(e.target.value)}
-              className="bg-slate-50 border border-slate-205 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none"
+              className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none"
             >
               <option>Monthly</option>
               <option>Weekly</option>
@@ -239,12 +239,12 @@ export default function SalesAnalytics() {
             </div>
             {/* Months Axis */}
             <div className="flex justify-between text-[8px] text-slate-500 px-2 uppercase tracking-wider font-bold">
-              <span>Dec '25</span>
-              <span>Jan '26</span>
-              <span>Feb '26</span>
-              <span>Mar '26</span>
-              <span>Apr '26</span>
-              <span>May '26</span>
+              <span>Dec-25</span>
+              <span>Jan-26</span>
+              <span>Feb-26</span>
+              <span>Mar-26</span>
+              <span>Apr-26</span>
+              <span>May-26</span>
             </div>
           </div>
         </Card>
@@ -252,7 +252,7 @@ export default function SalesAnalytics() {
         {/* Sales by Category Donut */}
         <Card className="space-y-4 flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-905 uppercase tracking-wider font-serif">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif">
               Sales by Product Category
             </h3>
             <p className="text-[10px] text-slate-500">Share of total sales by category</p>
@@ -269,7 +269,7 @@ export default function SalesAnalytics() {
               <circle cx="20" cy="20" r="13" fill="#ffffff" />
             </svg>
 
-            <div className="space-y-1.5 flex-1 text-[11px] text-slate-655 font-semibold">
+            <div className="space-y-1.5 flex-1 text-[11px] text-slate-600 font-semibold">
               <div className="flex justify-between">
                 <span>Staples & Grocery</span>
                 <span className="font-bold text-slate-900">32%</span>
@@ -300,109 +300,7 @@ export default function SalesAnalytics() {
         </Card>
       </div>
 
-      {/* Row 3: Channels, Best Sellers, Store Locations, and Customer Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Sales by Channel */}
-        <Card className="space-y-4">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif border-b border-slate-100 pb-2">
-            Sales by Channel
-          </h3>
-          <div className="space-y-3.5 text-xs font-sans">
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-700">
-                <span className="font-semibold">In-Store</span>
-                <span className="font-bold text-slate-900">₹5,42,320 (64%)</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
-                <div className="bg-blue-600 h-full rounded" style={{ width: "64%" }} />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-700">
-                <span className="font-semibold">Online</span>
-                <span className="font-bold text-slate-900">₹2,01,850 (24%)</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
-                <div className="bg-sky-505 bg-sky-500 h-full rounded" style={{ width: "24%" }} />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-700">
-                <span className="font-semibold">Mobile App</span>
-                <span className="font-bold text-slate-900">₹81,420 (10%)</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
-                <div className="bg-teal-500 h-full rounded" style={{ width: "10%" }} />
-              </div>
-            </div>
-          </div>
-        </Card>
 
-        {/* Top 5 Products */}
-        <Card className="space-y-4">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif border-b border-slate-100 pb-2">
-            Top 5 Best Selling Products
-          </h3>
-          <div className="space-y-3 font-sans text-xs">
-            {bestSellers.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-center text-slate-700">
-                <div>
-                  <span className="font-bold text-slate-900 block font-serif">{item.name}</span>
-                  <span className="text-[9px] text-slate-450 uppercase">{item.category}</span>
-                </div>
-                <span className="font-bold text-slate-800">₹{item.val.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Sales by Store Location */}
-        <Card className="space-y-4">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif border-b border-slate-100 pb-2">
-            Sales by Location
-          </h3>
-          <div className="space-y-3 font-sans text-xs">
-            {locations.map((loc, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex justify-between text-slate-700">
-                  <span className="font-semibold">{loc.name}</span>
-                  <span className="font-bold text-slate-900">₹{loc.val.toLocaleString()}</span>
-                </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded" style={{ width: `${loc.pct}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Customer Insights */}
-        <Card className="space-y-4 flex flex-col justify-between">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif border-b border-slate-100 pb-2">
-            Customer Insights
-          </h3>
-          <div className="grid grid-cols-3 gap-2 font-sans text-center">
-            <div className="space-y-1">
-              <span className="text-[8px] text-slate-500 font-bold uppercase block">New Users</span>
-              <span className="block font-black text-slate-900 text-sm">8,615</span>
-              <span className="text-[8px] text-emerald-650 font-bold">↑ 14.8%</span>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[8px] text-slate-500 font-bold uppercase block">Repeat Rate</span>
-              <span className="block font-black text-slate-900 text-sm">32.6%</span>
-              <span className="text-[8px] text-emerald-650 font-bold">↑ 5.2%</span>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[8px] text-slate-500 font-bold uppercase block">Retention</span>
-              <span className="block font-black text-slate-900 text-sm">78.3%</span>
-              <span className="text-[8px] text-emerald-655 font-bold">↑ 6.1%</span>
-            </div>
-          </div>
-          <div className="p-3 bg-sky-50/50 rounded-xl border border-sky-100 text-[10px] text-sky-750 font-sans mt-2">
-            ✨ Customer retention rates are stable above the regional average of 72%.
-          </div>
-        </Card>
-      </div>
 
       {/* Row 4: Sales Heatmap, Sales vs Target, and Monthly Comparison */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -4,36 +4,35 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback } 
 
 const StoreContext = createContext(null);
 
-const THEME_KEY = "vaannooku-theme";
-
 export function StoreProvider({ children }) {
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("light");
   const [stage, setStage] = useState("gateway"); // 'gateway' | 'active'
   const [activeStore, setActiveStore] = useState(null); // null => executive multi-store mode
   const [isExecutiveMode, setIsExecutiveMode] = useState(false);
   const [activeView, setActiveView] = useState("overview");
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(THEME_KEY) : null;
-    if (stored === "light" || stored === "dark") setTheme(stored);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    window.localStorage.setItem(THEME_KEY, theme);
+    if (typeof window !== "undefined") {
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
   }, [theme]);
+
 
   const enterStore = useCallback((store) => {
     setActiveStore(store);
     setIsExecutiveMode(false);
-    setActiveView("overview");
+    setActiveView("data-entry");
     setStage("active");
   }, []);
 
   const enterExecutiveMode = useCallback(() => {
     setActiveStore(null);
     setIsExecutiveMode(true);
-    setActiveView("overview");
+    setActiveView("data-entry");
     setStage("active");
   }, []);
 

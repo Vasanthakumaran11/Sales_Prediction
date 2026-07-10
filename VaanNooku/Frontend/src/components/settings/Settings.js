@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useStoreContext } from "@/context/StoreContext";
 import {
   User,
   Building,
@@ -24,11 +25,12 @@ import {
 import { PageHeader, Card } from "@/components/ui/Card";
 
 export default function Settings() {
+  const { theme, setTheme } = useStoreContext();
   const [activeTab, setActiveTab] = useState("profile");
   
   // Form Preference states
   const [prefs, setPrefs] = useState({
-    darkMode: true,
+    darkMode: theme === "dark",
     compactView: true,
     showTips: true,
     autoRefresh: false,
@@ -38,6 +40,10 @@ export default function Settings() {
     currency: "INR (₹)"
   });
 
+  useEffect(() => {
+    setPrefs((prev) => ({ ...prev, darkMode: theme === "dark" }));
+  }, [theme]);
+
   const [toastMsg, setToastMsg] = useState("");
 
   const triggerToast = (msg) => {
@@ -46,7 +52,13 @@ export default function Settings() {
   };
 
   const togglePref = (key) => {
-    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+    if (key === "darkMode") {
+      const nextTheme = theme === "dark" ? "light" : "dark";
+      setTheme(nextTheme);
+      triggerToast(`Theme changed to ${nextTheme === "dark" ? "Dark" : "Light"} Mode.`);
+    } else {
+      setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+    }
   };
 
   const handleSelectChange = (key, value) => {
@@ -70,10 +82,9 @@ export default function Settings() {
   ];
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6 font-sans px-6">
       <PageHeader
         title="Settings"
-        subtitle="Manage your account preferences, business configurations, and application settings."
         icon={Sliders}
       />
 
@@ -84,32 +95,8 @@ export default function Settings() {
         </div>
       )}
 
-      {/* Main Layout Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Left Side Tab Navigation */}
-        <div className="col-span-1 bg-white border border-sky-100 rounded-2xl p-2.5 space-y-1 shadow-sm">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isSelected = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-                  isSelected
-                    ? "bg-sky-50 text-blue-600 font-bold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-sky-50/20"
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isSelected ? "text-blue-600" : "text-slate-400"}`} />
-                <span className="font-serif">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right Side Settings Dashboard Container */}
-        <div className="col-span-1 lg:col-span-3 space-y-6">
+      {/* Main Layout Grid - Adjusted to take full width */}
+      <div className="w-full space-y-6">
           {/* Active Section: Profile & Account */}
           {activeTab === "profile" ? (
             <div className="space-y-6">
@@ -378,7 +365,6 @@ export default function Settings() {
               </p>
             </Card>
           )}
-        </div>
       </div>
     </div>
   );
