@@ -18,11 +18,15 @@ import {
   PieChart as PieIcon,
   Info,
   ChevronLeft,
+  Upload,
 } from "lucide-react";
 import { useStoreContext } from "@/context/StoreContext";
 import { STORE_PROFILES, CAPACITY_LIMITS, LOCATION_MULTIPLIERS, getColdStartFactor } from "@/lib/mock/stores";
 import { FESTIVALS } from "@/lib/mock/catalog";
 import { registerStore } from "@/lib/api/stores";
+import { ExecutiveGatewayView } from "./ExecutiveGatewayView";
+import { ShelfRecommendations } from "./ShelfRecommendations";
+import { PurchaseOrderConfirm } from "./PurchaseOrderConfirm";
 
 export function Gateway() {
   const { enterStore, enterExecutiveMode } = useStoreContext();
@@ -40,6 +44,45 @@ export function Gateway() {
   });
 
   const [selectedProfileId, setSelectedProfileId] = useState(STORE_PROFILES[0].id);
+
+  // Dynamic onboarding wizard states
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [supplierForm, setSupplierForm] = useState({
+    name: "",
+    phone: "",
+    email: ""
+  });
+  const [showPoSuccess, setShowPoSuccess] = useState(false);
+
+  const getProductRecommendationsForInvestment = (investment) => {
+    const amt = parseFloat(investment) || 150000;
+    return [
+      { id: 1, name: "Aashirvaad Chakki Atta 5kg", category: "Staples & Grains", buyingPrice: 245.0, sellingPrice: 280.0, qty: Math.max(10, Math.round(amt * 0.35 / 245)), checked: true },
+      { id: 2, name: "Amul Salted Butter 100g", category: "Dairy & Bakery", buyingPrice: 56.0, sellingPrice: 68.0, qty: Math.max(10, Math.round(amt * 0.15 / 56)), checked: true },
+      { id: 3, name: "Nescafe Gold 100g", category: "Beverages", buyingPrice: 240.0, sellingPrice: 320.0, qty: Math.max(10, Math.round(amt * 0.20 / 240)), checked: true },
+      { id: 4, name: "Haldiram’s Bhujia 400g", category: "Snacks & Biscuits", buyingPrice: 85.0, sellingPrice: 110.0, qty: Math.max(10, Math.round(amt * 0.20 / 85)), checked: true },
+      { id: 5, name: "Surf Excel Matic 1kg", category: "Personal Care", buyingPrice: 180.0, sellingPrice: 210.0, qty: Math.max(10, Math.round(amt * 0.10 / 180)), checked: true },
+    ];
+  };
+
+  const handleUploadPurchasePlan = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csv,.txt,.xlsx";
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        setSelectedProducts([
+          { id: 201, name: "Premium Kolam Rice 10kg", category: "Staples & Grains", buyingPrice: 580.0, sellingPrice: 650.0, qty: 100, checked: true },
+          { id: 202, name: "Madhur Pure Sugar 5kg", category: "Staples & Grains", buyingPrice: 210.0, sellingPrice: 240.0, qty: 150, checked: true },
+          { id: 203, name: "Britannia Marie Gold 250g", category: "Snacks & Biscuits", buyingPrice: 30.0, sellingPrice: 35.0, qty: 500, checked: true },
+          { id: 204, name: "Amul Pure Ghee 1L", category: "Dairy & Bakery", buyingPrice: 610.0, sellingPrice: 650.0, qty: 60, checked: true },
+        ]);
+        alert(`Successfully parsed custom purchase plan from file: ${file.name}. Loaded 4 custom products into your purchase order.`);
+      }
+    };
+    input.click();
+  };
 
   // Login Form Credentials State
   const [loginCredentials, setLoginCredentials] = useState({
@@ -73,11 +116,15 @@ export function Gateway() {
     enterStore(matched);
   };
 
-  // Submit New Store
+  // Submit New Store (Step 1)
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
     if (!formData.storeName.trim()) return;
-    setGatewayState("insights");
+    
+    // Suggest items based on capital investment
+    const initialRecs = getProductRecommendationsForInvestment(formData.investment);
+    setSelectedProducts(initialRecs);
+    setGatewayState("recommendations");
   };
 
   const selectedProfile = STORE_PROFILES.find((p) => p.id === selectedProfileId);
@@ -134,14 +181,35 @@ export function Gateway() {
   };
 
   const handleActivateStore = async () => {
-    const newStore = await registerStore(formData);
-    enterStore(newStore);
+    setShowPoSuccess(true);
+    setTimeout(async () => {
+      const newStore = await registerStore(formData);
+      enterStore(newStore);
+    }, 2500);
   };
 
   return (
     <div className="min-h-screen bg-sky-50 text-slate-800 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200 relative overflow-hidden">
       {/* Background Radial Glow */}
       <div className="absolute inset-0 bg-gradient-to-tr from-sky-100 via-sky-50 to-white pointer-events-none opacity-85" />
+
+      {/* PO Success Banner Overlay */}
+      {showPoSuccess && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white border border-sky-100 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-emerald-600">
+              <CheckCircle2 className="w-10 h-10 animate-bounce" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 font-serif">Purchase Order Successful!</h3>
+            <p className="text-xs text-slate-500 font-sans leading-relaxed">
+              Your custom product catalog and supplier allocations have been initialized successfully. Ingesting metrics and starting demand engines...
+            </p>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-sky-600 uppercase tracking-widest pt-2">
+              <span className="w-2 h-2 rounded-full bg-sky-600 animate-ping" /> Synchronizing store credentials...
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Landing Page State */}
       {gatewayState === "landing" && (
@@ -251,7 +319,7 @@ export function Gateway() {
                 <span className="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-bold">
                   2
                 </span>
-                <span>Store Registration</span>
+                <span>Shelf Recommendations</span>
               </div>
               <div className="w-16 h-0.5 bg-slate-200 rounded-full" />
 
@@ -259,7 +327,7 @@ export function Gateway() {
                 <span className="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-bold">
                   3
                 </span>
-                <span>First Context</span>
+                <span>Purchase Order</span>
               </div>
             </div>
           </div>
@@ -322,81 +390,89 @@ export function Gateway() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">
-                    Initial Capital Investment (₹)
-                  </label>
-                  <input
-                    id="input-investment"
-                    type="number"
-                    name="investment"
-                    value={formData.investment}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 font-sans"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right 2 Columns: Live Preview Card */}
-            <div className="lg:col-span-2 h-full flex flex-col justify-center">
-              <div className="w-full bg-sky-50/50 border border-sky-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between gap-5 min-h-[280px]">
-                <div className="space-y-1.5">
-                  <h3 className="text-sm font-bold text-slate-900 tracking-wide font-serif">Capital Allocation Blueprint</h3>
-                  <p className="text-[10px] text-slate-500 font-sans leading-normal">
-                    AI-driven recommendation blueprint based on historical data.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-center gap-5 my-2">
-                  <div className="text-right font-sans">
-                    <span className="block text-base font-black text-slate-950">30%</span>
-                    <span className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider">Perishables</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">
+                      Initial Capital Investment (₹)
+                    </label>
+                    <input
+                      id="input-investment"
+                      type="number"
+                      name="investment"
+                      value={formData.investment}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 font-sans"
+                      required
+                    />
                   </div>
 
-                  <svg width="90" height="90" viewBox="0 0 40 40" className="transform -rotate-90 shrink-0">
-                    <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#e2e8f0" strokeWidth="4" />
-                    <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#0ea5e9" strokeWidth="4.2" strokeDasharray="40 60" strokeDashoffset="0" />
-                    <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#64748b" strokeWidth="4.2" strokeDasharray="30 70" strokeDashoffset="-40" />
-                    <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#94a3b8" strokeWidth="4" strokeDasharray="30 70" strokeDashoffset="-70" />
-                    <circle cx="20" cy="20" r="13" fill="#ffffff" />
-                  </svg>
-
-                  <div className="text-left font-sans">
-                    <span className="block text-base font-black text-slate-950">40%</span>
-                    <span className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider">Staples</span>
-                  </div>
-                </div>
-
-                <div className="border-t border-sky-100 pt-3 flex justify-between items-center text-[9px] text-slate-500 font-sans">
-                  <div>
-                    <span className="block font-semibold">Staples (40%):</span>
-                    <span className="font-bold text-sky-600">₹{alloc.staples.toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="block font-semibold">Perishables (30%):</span>
-                    <span className="font-bold text-slate-650">₹{alloc.perishables.toLocaleString()}</span>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">
+                      Opening Month
+                    </label>
+                    <select
+                      id="select-opening-month"
+                      name="openingMonth"
+                      value={formData.openingMonth}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-[right_1rem_center] bg-no-repeat font-sans"
+                    >
+                      <option value="January">January</option>
+                      <option value="February">February</option>
+                      <option value="March">March</option>
+                      <option value="April">April</option>
+                      <option value="May">May</option>
+                      <option value="June">June</option>
+                      <option value="July">July</option>
+                      <option value="August">August</option>
+                      <option value="September">September</option>
+                      <option value="October">October</option>
+                      <option value="November">November</option>
+                      <option value="December">December</option>
+                    </select>
                   </div>
                 </div>
               </div>
             </div>
+
+          <div>
+            <img src="/Images/onboarding1.jpg" alt="" />
+          </div>
           </div>
 
           {/* Footer Controls */}
           <div className="p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-end relative h-16 shrink-0">
             <button
-              id="btn-initialize-engine"
+              id="btn-onboarding-next"
               type="submit"
-              className="bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition-all shadow-sm"
+              className="bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition-all shadow-sm flex items-center gap-1.5"
             >
-              Initialize Store Engine
+              Next: Product Recommendations <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </form>
       )}
 
-      {/* Existing Store Login State */}
+      {gatewayState === "recommendations" && (
+        <ShelfRecommendations
+          selectedProducts={selectedProducts}
+          setSelectedProducts={setSelectedProducts}
+          formData={formData}
+          setGatewayState={setGatewayState}
+          handleUploadPurchasePlan={handleUploadPurchasePlan}
+        />
+      )}
+
+      {gatewayState === "purchase-order" && (
+        <PurchaseOrderConfirm
+          selectedProducts={selectedProducts}
+          supplierForm={supplierForm}
+          setSupplierForm={setSupplierForm}
+          setGatewayState={setGatewayState}
+          handleActivateStore={handleActivateStore}
+        />
+      )}
+
       {gatewayState === "login" && (
         <form
           onSubmit={handleLoginSubmit}
@@ -412,7 +488,6 @@ export function Gateway() {
             </button>
             <div>
               <h3 className="text-xl font-bold text-slate-900 font-serif tracking-tight">Store Console Login</h3>
-
             </div>
           </div>
 
@@ -458,280 +533,11 @@ export function Gateway() {
         </form>
       )}
 
-      {/* Executive Control State */}
       {gatewayState === "chain" && (
-        <div className="w-full max-w-4xl bg-white border border-sky-100 rounded-2xl shadow-xl p-8 relative z-10 space-y-6">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <button
-              onClick={() => setGatewayState("landing")}
-              className="p-1 rounded bg-slate-50 border border-slate-200 hover:bg-slate-105 text-slate-500"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div>
-              <h3 className="text-base font-bold text-slate-900 font-serif">Multi-Store Executive Control Tower</h3>
-              <p className="text-[10px] text-slate-550 font-sans">
-                Aggregated operations and performance benchmarking across all registered nodes.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 font-sans">
-            <div className="bg-sky-50/50 border border-sky-100 p-4 rounded-xl">
-              <span className="text-[10px] text-slate-500 font-bold uppercase block">Total Chain Revenue</span>
-              <span className="text-lg font-bold text-slate-900">₹455,900</span>
-              <span className="text-[10px] text-sky-600 block mt-1">+14.2% projected MoM</span>
-            </div>
-            <div className="bg-sky-50/50 border border-sky-100 p-4 rounded-xl">
-              <span className="text-[10px] text-slate-500 font-bold uppercase block">Active Asset Value</span>
-              <span className="text-lg font-bold text-teal-600">₹305,400</span>
-              <span className="text-[10px] text-slate-500 block mt-1">Spread across 3 active store formats</span>
-            </div>
-            <div className="bg-sky-50/50 border border-sky-100 p-4 rounded-xl">
-              <span className="text-[10px] text-slate-500 font-bold uppercase block">Global Stockout Alerts</span>
-              <span className="text-lg font-bold text-rose-600">17 Items</span>
-              <span className="text-[10px] text-rose-500 block mt-1">Requires immediate bulk purchasing</span>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="overflow-x-auto border border-sky-100 rounded-xl bg-white">
-            <table className="w-full border-collapse text-left text-xs font-sans">
-              <thead>
-                <tr className="bg-slate-50 border-b border-sky-100 text-slate-500 font-bold text-[9px] uppercase tracking-wider">
-                  <th className="p-3">Store Node</th>
-                  <th className="p-3">Format Type / Location</th>
-                  <th className="p-3 text-right">R² Accuracy Score</th>
-                  <th className="p-3 text-right">Waste / Expiry Margin</th>
-                  <th className="p-3 text-right">Active Inventory Value</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {STORE_PROFILES.map((store) => (
-                  <tr key={store.id} className="hover:bg-sky-50/30 text-slate-700">
-                    <td className="p-3 font-semibold text-slate-900">{store.name}</td>
-                    <td className="p-3">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-50 text-[9px] text-slate-550 border border-slate-200">
-                        {store.type} - {store.location}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right font-medium text-sky-600">
-                      {parseFloat(store.metrics.forecastR2) * 100}%
-                    </td>
-                    <td className="p-3 text-right font-medium text-amber-600">
-                      {parseFloat(store.metrics.wasteMargin) * 100}%
-                    </td>
-                    <td className="p-3 text-right text-slate-800">₹{store.metrics.inventoryValue.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              id="btn-launch-chain"
-              onClick={enterExecutiveMode}
-              className="flex items-center gap-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition-all shadow"
-            >
-              Access Executive Control Tower <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Pre-Launch Insights Deck State */}
-      {gatewayState === "insights" && (
-        <div className="w-full max-w-5xl bg-white border border-sky-100 rounded-2xl shadow-xl p-8 relative z-10 space-y-8 flex flex-col">
-          {/* Deck Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
-            <div>
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-[10px] text-sky-600 font-bold uppercase tracking-wider mb-2 font-sans">
-                Predictive Analytics Report
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 font-serif">
-                <Building2 className="w-5 h-5 text-sky-600" /> Pre-Launch Insights Deck: {formData.storeName}
-              </h2>
-              <p className="text-slate-500 text-xs mt-1 font-sans">
-                Forecasting model outputs matching a{" "}
-                <span className="font-semibold text-slate-800">{formData.storeType}</span> store launch in{" "}
-                <span className="font-semibold text-slate-800">{formData.openingMonth}</span> at{" "}
-                <span className="font-semibold text-slate-800">{formData.locationType}</span> format.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 font-sans">
-              <button
-                type="button"
-                onClick={() => setGatewayState("register")}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 text-xs font-bold font-sans"
-              >
-                Modify Inputs
-              </button>
-              <button
-                id="btn-activate-console"
-                type="button"
-                onClick={handleActivateStore}
-                className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow flex items-center gap-1.5"
-              >
-                Activate Store Console <CheckCircle2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Insights Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
-            {/* Box 1: Month recommendations */}
-            <div className="bg-slate-50/50 border border-slate-200 p-5 rounded-xl flex flex-col gap-4">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 font-serif">
-                  <Sparkles className="w-4 h-4 text-sky-600" /> Seasonal Shelf Strategy
-                </h4>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Recommended launch list aligned with {formData.openingMonth} demand patterns.
-                </p>
-              </div>
-
-              <div className="space-y-3 flex-1">
-                {getProductRecommendations(formData.openingMonth).map((rec, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-lg bg-white border border-slate-200 hover:border-sky-300 transition-all flex justify-between items-center text-xs"
-                  >
-                    <div>
-                      <span className="font-bold text-slate-900 block">{rec.name}</span>
-                      <span className="text-[10px] text-slate-550">{rec.category}</span>
-                    </div>
-                    <span className="inline-block px-2 py-0.5 rounded bg-sky-50 text-sky-600 text-[9px] font-bold border border-sky-100 text-right max-w-[120px] truncate">
-                      {rec.reason}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="p-3 rounded-lg bg-sky-50/80 border border-sky-100 text-[10px] text-sky-750">
-                🚀 Models recommend prioritizing staples to establish a reliable launch customer buffer.
-              </div>
-            </div>
-
-            {/* Box 2: Capital Allocation */}
-            <div className="bg-slate-50/50 border border-slate-200 p-5 rounded-xl flex flex-col gap-4">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 font-serif">
-                  <PieIcon className="w-4 h-4 text-sky-600" /> Capital Allocation Blueprint
-                </h4>
-                <p className="text-[10px] text-slate-505 mt-1">
-                  Optimal category investment split matching local seasonality weights.
-                </p>
-              </div>
-
-              {/* Simple Donut Chart */}
-              <div className="flex justify-center items-center h-32 relative">
-                <svg width="120" height="120" viewBox="0 0 40 40" className="transform -rotate-90">
-                  <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#0ea5e9" strokeWidth="4" strokeDasharray="35 65" strokeDashoffset="0" />
-                  <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#14b8a6" strokeWidth="4" strokeDasharray="20 80" strokeDashoffset="-35" />
-                  <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#f59e0b" strokeWidth="4" strokeDasharray="20 80" strokeDashoffset="-55" />
-                  <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#3b82f6" strokeWidth="4" strokeDasharray="15 85" strokeDashoffset="-75" />
-                  <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#f43f5e" strokeWidth="4" strokeDasharray="10 90" strokeDashoffset="-90" />
-                  <circle cx="20" cy="20" r="13" fill="#ffffff" />
-                </svg>
-                <div className="absolute text-center">
-                  <span className="block text-xs font-bold text-slate-500">Total</span>
-                  <span className="text-sm font-black text-slate-950">
-                    ₹{(parseInt(formData.investment) || 150000).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-2 flex-1 text-xs">
-                {getCapitalAllocation(formData.investment).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-                      <span className="text-slate-700 text-[11px] font-semibold">{item.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold text-slate-900 block">₹{item.value.toLocaleString()}</span>
-                      <span className="text-[9px] text-slate-500 font-bold uppercase">{item.pct}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Box 3: 3-Month Risk Matrix */}
-            <div className="bg-slate-50/50 border border-slate-200 p-5 rounded-xl flex flex-col gap-4">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 font-serif">
-                  <TrendingUp className="w-4 h-4 text-sky-600" /> 3-Month Risk Matrix
-                </h4>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  90-day forward demand path showing Cold Start and stabilization factors.
-                </p>
-              </div>
-
-              {/* Custom Line Chart */}
-              <div className="h-32 bg-white rounded-lg p-2 border border-slate-200 flex flex-col justify-between">
-                <div className="w-full h-full relative">
-                  <svg viewBox="0 0 100 40" className="w-full h-full">
-                    <line x1="0" y1="35" x2="100" y2="35" className="stroke-slate-200" strokeWidth="0.5" />
-                    <line x1="0" y1="20" x2="100" y2="20" className="stroke-slate-200" strokeWidth="0.5" strokeDasharray="1 1" />
-                    <line x1="0" y1="5" x2="100" y2="5" className="stroke-slate-200" strokeWidth="0.5" strokeDasharray="1 1" />
-                    <path d="M 5 28 Q 20 22 45 17 T 95 6" fill="none" stroke="#0284c7" strokeWidth="2" />
-                    <circle cx="5" cy="28" r="1.5" fill="#ef4444" />
-                    <circle cx="45" cy="17" r="1.5" fill="#f59e0b" />
-                    <circle cx="95" cy="6" r="1.5" fill="#0284c7" />
-                    <text x="5" y="32" className="fill-slate-500" fontSize="3">
-                      Month 1
-                    </text>
-                    <text x="45" y="22" className="fill-slate-500" fontSize="3">
-                      Month 2
-                    </text>
-                    <text x="80" y="11" className="fill-slate-500" fontSize="3">
-                      Month 3
-                    </text>
-                  </svg>
-                </div>
-              </div>
-
-              <div className="space-y-3 flex-1 text-xs">
-                <div className="flex items-start gap-2.5">
-                  <div className="w-4 h-4 rounded-full bg-rose-100 flex items-center justify-center text-[10px] font-bold text-rose-600 mt-0.5">
-                    1
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-800 block">Month 1: Cold Start Period (40% discount)</span>
-                    <span className="text-[10px] text-slate-500">
-                      Scaling applied to guard against early stock buffer bloating.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <div className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center text-[10px] font-bold text-amber-600 mt-0.5">
-                    2
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-800 block">Month 2-3: Ramping up (70% scaling)</span>
-                    <span className="text-[10px] text-slate-500">
-                      Market awareness and footfall begins to match local average.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <div className="w-4 h-4 rounded-full bg-sky-100 flex items-center justify-center text-[10px] font-bold text-sky-600 mt-0.5">
-                    3
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-800 block">Month 4+: Stabilized forecasting</span>
-                    <span className="text-[10px] text-slate-505">
-                      ML models shift from cold start modes to full demand signal tracking.
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ExecutiveGatewayView
+          setGatewayState={setGatewayState}
+          enterExecutiveMode={enterExecutiveMode}
+        />
       )}
     </div>
   );

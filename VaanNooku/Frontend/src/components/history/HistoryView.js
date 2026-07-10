@@ -1,25 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
+import { useStoreContext } from "@/context/StoreContext";
 import { History, Calendar, Calculator, Check, ArrowRight, DollarSign, BarChart3, Layers, CheckCircle } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
 
 export default function HistoryView() {
-  // Mock daily history ledger logs
-  const [logs, setLogs] = useState([
-    { date: "May 17, 2026", transactions: 1320, gross: 24567.70, discount: 1122.20, net: 23445.50, checked: true },
-    { date: "May 16, 2026", transactions: 1285, gross: 22890.00, discount: 890.00, net: 22000.00, checked: true },
-    { date: "May 15, 2026", transactions: 1410, gross: 27120.00, discount: 1540.00, net: 25580.00, checked: false },
-    { date: "May 14, 2026", transactions: 1150, gross: 19850.50, discount: 450.50, net: 19400.00, checked: false },
-    { date: "May 13, 2026", transactions: 1290, gross: 23410.00, discount: 1010.00, net: 22400.00, checked: false },
-    { date: "May 12, 2026", transactions: 1380, gross: 26180.00, discount: 1200.00, net: 24980.00, checked: false },
-    { date: "May 11, 2026", transactions: 1210, gross: 21050.00, discount: 850.00, net: 20200.00, checked: false },
-  ]);
+  const { historyLogs, setHistoryLogs } = useStoreContext();
 
   const [allChecked, setAllChecked] = useState(false);
 
   const handleToggleCheck = (date) => {
-    setLogs((prev) =>
+    setHistoryLogs((prev) =>
       prev.map((log) => (log.date === date ? { ...log, checked: !log.checked } : log))
     );
   };
@@ -27,11 +19,11 @@ export default function HistoryView() {
   const handleToggleAll = () => {
     const nextVal = !allChecked;
     setAllChecked(nextVal);
-    setLogs((prev) => prev.map((log) => ({ ...log, checked: nextVal })));
+    setHistoryLogs((prev) => prev.map((log) => ({ ...log, checked: nextVal })));
   };
 
   // Perform financial calculations based on CHECKED records
-  const checkedLogs = logs.filter((log) => log.checked);
+  const checkedLogs = historyLogs.filter((log) => log.checked);
   const totalTransactions = checkedLogs.reduce((sum, log) => sum + log.transactions, 0);
   const totalGross = checkedLogs.reduce((sum, log) => sum + log.gross, 0);
   const totalDiscount = checkedLogs.reduce((sum, log) => sum + log.discount, 0);
@@ -105,7 +97,7 @@ export default function HistoryView() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
-            {logs.map((log) => (
+            {historyLogs.map((log) => (
               <tr key={log.date} className="hover:bg-sky-50/10 transition-colors">
                 <td className="p-3 text-center">
                   <input

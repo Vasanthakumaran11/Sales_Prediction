@@ -25,7 +25,7 @@ import {
 import { PageHeader, Card } from "@/components/ui/Card";
 
 export default function Settings() {
-  const { theme, setTheme } = useStoreContext();
+  const { theme, setTheme, exitToGateway } = useStoreContext();
   const [activeTab, setActiveTab] = useState("profile");
   
   // Form Preference states
@@ -39,6 +39,26 @@ export default function Settings() {
     timezone: "(GMT+05:30) Asia/Kolkata",
     currency: "INR (₹)"
   });
+
+  // Profile Information states
+  const [profile, setProfile] = useState({
+    name: "Arjun Sharma",
+    email: "arjun.sharma@retailai.com",
+    phone: "+91 98765 43210",
+    role: "Administrator"
+  });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ ...profile });
+
+  // Password Update Form states
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "password123",
+    newPassword: "",
+    confirmNewPassword: ""
+  });
+
+  // Backup logs
+  const [lastBackup, setLastBackup] = useState("May 16, 2026 10:30 AM");
 
   useEffect(() => {
     setPrefs((prev) => ({ ...prev, darkMode: theme === "dark" }));
@@ -63,6 +83,95 @@ export default function Settings() {
 
   const handleSelectChange = (key, value) => {
     setPrefs((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Profile Edit Toggle & Save
+  const handleEditProfileToggle = () => {
+    if (isEditingProfile) {
+      setProfile({ ...profileForm });
+      setIsEditingProfile(false);
+      triggerToast("Profile details updated successfully.");
+    } else {
+      setProfileForm({ ...profile });
+      setIsEditingProfile(true);
+    }
+  };
+
+  // Change Password Action
+  const handleChangePassword = () => {
+    if (!passwordForm.newPassword || !passwordForm.confirmNewPassword) {
+      triggerToast("Please fill in both new password fields.");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+      triggerToast("Error: Confirm password does not match new password.");
+      return;
+    }
+    setPasswordForm((prev) => ({
+      currentPassword: prev.newPassword,
+      newPassword: "",
+      confirmNewPassword: ""
+    }));
+    triggerToast("Password changed successfully.");
+  };
+
+  // Backup Now Action
+  const handleBackupNow = () => {
+    const timeString = new Date().toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    });
+    setLastBackup(timeString);
+    triggerToast("Database backup completed successfully.");
+  };
+
+  // Export Data settings Action
+  const handleExportData = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ profile, prefs }, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "retail_ai_settings_backup.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    document.body.removeChild(downloadAnchor);
+    triggerToast("Settings backup exported successfully.");
+  };
+
+  // Danger Zone handlers
+  const handleResetApplication = () => {
+    if (window.confirm("Are you sure you want to restore application parameters to factory settings? All temporary logs will be cleared.")) {
+      setPrefs({
+        darkMode: false,
+        compactView: true,
+        showTips: true,
+        autoRefresh: false,
+        language: "English (India)",
+        dateFormat: "DD MMM YYYY",
+        timezone: "(GMT+05:30) Asia/Kolkata",
+        currency: "INR (₹)"
+      });
+      setTheme("light");
+      setProfile({
+        name: "Arjun Sharma",
+        email: "arjun.sharma@retailai.com",
+        phone: "+91 98765 43210",
+        role: "Administrator"
+      });
+      triggerToast("Application state reset to defaults.");
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (window.confirm("WARNING: Account deletion is permanent and cannot be undone. Are you sure you want to deactivate your license?")) {
+      triggerToast("Deactivating account...");
+      setTimeout(() => {
+        exitToGateway();
+      }, 1000);
+    }
   };
 
   // Sidebar settings tabs
@@ -108,30 +217,57 @@ export default function Settings() {
                     <p className="text-[10px] text-slate-500">Update your personal information and profile details.</p>
                   </div>
                   <button
-                    onClick={() => triggerToast("Profile edit wizard loaded.")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg shadow-sm font-sans"
+                    onClick={handleEditProfileToggle}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow-sm font-sans"
                   >
-                    <Edit2 className="w-3.5 h-3.5 text-slate-400" /> Edit Profile
+                    <Edit2 className="w-3.5 h-3.5" /> {isEditingProfile ? "Save Changes" : "Edit Profile"}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs font-sans mt-1">
                   <div>
                     <span className="block text-[9px] text-slate-400 font-bold uppercase">Full Name</span>
-                    <span className="font-bold text-slate-800">Arjun Sharma</span>
+                    {isEditingProfile ? (
+                      <input
+                        type="text"
+                        value={profileForm.name}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, name: e.target.value }))}
+                        className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-800 focus:outline-none"
+                      />
+                    ) : (
+                      <span className="font-bold text-slate-800">{profile.name}</span>
+                    )}
                   </div>
                   <div>
                     <span className="block text-[9px] text-slate-400 font-bold uppercase">Email Address</span>
-                    <span className="font-semibold text-slate-800">arjun.sharma@retailai.com</span>
+                    {isEditingProfile ? (
+                      <input
+                        type="email"
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, email: e.target.value }))}
+                        className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-800 focus:outline-none"
+                      />
+                    ) : (
+                      <span className="font-semibold text-slate-800">{profile.email}</span>
+                    )}
                   </div>
                   <div>
                     <span className="block text-[9px] text-slate-400 font-bold uppercase">Phone Number</span>
-                    <span className="font-semibold text-slate-800">+91 98765 43210</span>
+                    {isEditingProfile ? (
+                      <input
+                        type="text"
+                        value={profileForm.phone}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, phone: e.target.value }))}
+                        className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-800 focus:outline-none"
+                      />
+                    ) : (
+                      <span className="font-semibold text-slate-800">{profile.phone}</span>
+                    )}
                   </div>
                   <div>
                     <span className="block text-[9px] text-slate-400 font-bold uppercase">Role</span>
                     <span className="px-2.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold mt-0.5 inline-block uppercase">
-                      Administrator
+                      {profile.role}
                     </span>
                   </div>
                 </div>
@@ -145,7 +281,7 @@ export default function Settings() {
                     <p className="text-[10px] text-slate-500">Ensure your account is using a strong password.</p>
                   </div>
                   <button
-                    onClick={() => triggerToast("Password updated successfully.")}
+                    onClick={handleChangePassword}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg shadow-sm font-sans"
                   >
                     <Lock className="w-3.5 h-3.5 text-slate-400" /> Change Password
@@ -157,9 +293,9 @@ export default function Settings() {
                     <label className="text-[9px] text-slate-400 font-bold uppercase">Current Password</label>
                     <input
                       type="password"
-                      value="password123"
+                      value={passwordForm.currentPassword}
                       readOnly
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 focus:outline-none"
+                      className="w-full bg-slate-150 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 focus:outline-none bg-slate-100"
                     />
                   </div>
                   <div className="space-y-1">
@@ -167,6 +303,8 @@ export default function Settings() {
                     <input
                       type="password"
                       placeholder="••••••••"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 focus:outline-none"
                     />
                   </div>
@@ -175,6 +313,8 @@ export default function Settings() {
                     <input
                       type="password"
                       placeholder="••••••••"
+                      value={passwordForm.confirmNewPassword}
+                      onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmNewPassword: e.target.value }))}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 focus:outline-none"
                     />
                   </div>
@@ -303,14 +443,14 @@ export default function Settings() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => triggerToast("Backup initiated.")}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-705 text-xs font-bold rounded-lg shadow-sm font-sans"
+                      onClick={handleBackupNow}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg shadow-sm font-sans"
                     >
                       <RefreshCw className="w-3.5 h-3.5 text-slate-400" /> Backup Now
                     </button>
                     <button
-                      onClick={() => triggerToast("Data export file downloaded.")}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-705 text-xs font-bold rounded-lg shadow-sm font-sans"
+                      onClick={handleExportData}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg shadow-sm font-sans"
                     >
                       <Download className="w-3.5 h-3.5 text-slate-400" /> Export Data
                     </button>
@@ -320,7 +460,7 @@ export default function Settings() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans mt-1">
                   <div>
                     <span className="block text-[9px] text-slate-400 font-bold uppercase">Last Backup</span>
-                    <span className="font-bold text-slate-800">May 16, 2026 10:30 AM</span>
+                    <span className="font-bold text-slate-800">{lastBackup}</span>
                   </div>
                   <div>
                     <span className="block text-[9px] text-slate-400 font-bold uppercase">Backup Frequency</span>
@@ -328,7 +468,7 @@ export default function Settings() {
                   </div>
                   <div>
                     <span className="block text-[9px] text-slate-400 font-bold uppercase">Next Backup</span>
-                    <span className="font-semibold text-slate-800">May 17, 2026 10:30 AM</span>
+                    <span className="font-semibold text-slate-800">Scheduled Daily</span>
                   </div>
                 </div>
               </Card>
@@ -342,13 +482,13 @@ export default function Settings() {
 
                 <div className="flex flex-wrap gap-3 mt-1">
                   <button
-                    onClick={() => triggerToast("Application state resetted to factory defaults.")}
+                    onClick={handleResetApplication}
                     className="flex items-center gap-1.5 px-3.5 py-2 border border-rose-500 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-lg font-sans transition-all"
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> Reset Application
                   </button>
                   <button
-                    onClick={() => triggerToast("Account deletion ticket submitted.")}
+                    onClick={handleDeleteAccount}
                     className="flex items-center gap-1.5 px-3.5 py-2 border border-rose-500 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-lg font-sans transition-all"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Delete Account

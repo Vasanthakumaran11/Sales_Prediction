@@ -36,7 +36,7 @@ export default function ProductsView() {
   const baseCatalog = flattenCatalog();
 
   // Re-map and enrich products for the visual grid matching the image
-  const products = [
+  const [products, setProducts] = useState([
     {
       name: "Amul Taaza Milk 1L",
       category: "Dairy & Bakery",
@@ -107,7 +107,7 @@ export default function ProductsView() {
       updated: "May 16, 2026 07:20 PM",
       img: "🥡",
     },
-  ];
+  ]);
 
   // Recently updated items list
   const updates = [
@@ -124,6 +124,94 @@ export default function ProductsView() {
     return matchesSearch && matchesCat && matchesBrand;
   });
 
+  const handleExportExcel = () => {
+    let csvContent = "data:text/csv;charset=utf-8,Product Name,Category,Brand,SKU,Barcode,Buying Price,Selling Price,Margin (%),Stock,Status\n";
+    products.forEach(p => {
+      csvContent += `"${p.name}","${p.category}","${p.brand}","${p.sku}","${p.barcode}",${p.buyingPrice},${p.sellingPrice},${p.margin},${p.stock},"${p.status}"\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "products_catalog_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportProducts = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csv,.xlsx,.xls";
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        setProducts((prev) => [
+          ...prev,
+          {
+            name: "Cadbury Celebrations Gift Pack",
+            category: "Snacks & Biscuits",
+            brand: "Cadbury",
+            sku: "CAD-CELEB-GP",
+            barcode: "8901234567890",
+            buyingPrice: 150.0,
+            sellingPrice: 200.0,
+            margin: 25.0,
+            stock: 80,
+            status: "Healthy",
+            updated: "Just Now",
+            img: "🎁",
+          },
+          {
+            name: "Haldiram's Bhujia 400g",
+            category: "Snacks & Biscuits",
+            brand: "Haldiram",
+            sku: "HAL-BHUJIA-400",
+            barcode: "8901030112233",
+            buyingPrice: 85.0,
+            sellingPrice: 110.0,
+            margin: 22.7,
+            stock: 150,
+            status: "Healthy",
+            updated: "Just Now",
+            img: "🍿",
+          }
+        ]);
+        alert(`Successfully imported 2 products from file: ${file.name}`);
+      }
+    };
+    input.click();
+  };
+
+  const handleAddProduct = () => {
+    const name = prompt("Enter Product Name:", "Annapoorna Ghee 1L");
+    if (!name) return;
+    const category = prompt("Enter Category (Staples & Grains / Dairy & Bakery / Beverages / Snacks & Biscuits):", "Dairy & Bakery");
+    const brand = prompt("Enter Brand Name:", "Annapoorna");
+    const buyingPrice = parseFloat(prompt("Enter Buying Price (₹):", "450")) || 0;
+    const sellingPrice = parseFloat(prompt("Enter Selling Price (₹):", "550")) || 0;
+    const stock = parseInt(prompt("Enter Initial Stock Qty:", "50")) || 0;
+    
+    const margin = buyingPrice > 0 ? Math.round(((sellingPrice - buyingPrice) / sellingPrice) * 1000) / 10 : 0;
+    const sku = `${brand.slice(0, 3).toUpperCase()}-${name.split(" ")[0].toUpperCase()}-${Date.now().toString().slice(-4)}`;
+    
+    const newProduct = {
+      name,
+      category,
+      brand,
+      sku,
+      barcode: Math.floor(1000000000000 + Math.random() * 9000000000000).toString(),
+      buyingPrice,
+      sellingPrice,
+      margin,
+      stock,
+      status: stock === 0 ? "Out of Stock" : stock < 20 ? "Low Stock" : "Healthy",
+      updated: "Just Now",
+      img: "📦"
+    };
+    
+    setProducts((prev) => [newProduct, ...prev]);
+  };
+
   return (
     <div className="space-y-6 font-sans px-6">
       {/* Top Header */}
@@ -137,13 +225,22 @@ export default function ProductsView() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs font-sans">
-          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm"
+          >
             <FileSpreadsheet className="w-3.5 h-3.5 text-slate-400" /> Export to Excel
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
+          <button
+            onClick={handleImportProducts}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm"
+          >
             Import Products <ChevronDown className="w-3.5 h-3.5 text-slate-405" />
           </button>
-          <button className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-md">
+          <button
+            onClick={handleAddProduct}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-md"
+          >
             <Plus className="w-3.5 h-3.5" /> Add New Product <ChevronDown className="w-3 h-3" />
           </button>
         </div>

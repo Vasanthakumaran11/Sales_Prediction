@@ -21,6 +21,29 @@ import { StatTile } from "@/components/ui/StatTile";
 
 export default function SalesAnalytics() {
   const [timeframe, setTimeframe] = useState("Monthly");
+  const [dateRange, setDateRange] = useState("Jan 01, 2026 - May 17, 2026");
+
+  const handleDateRangeChange = () => {
+    const ranges = [
+      "Jan 01, 2026 - May 17, 2026",
+      "Last 30 Days (Apr 17 - May 17)",
+      "Year to Date (Jan 01 - May 17)"
+    ];
+    const currentIndex = ranges.indexOf(dateRange);
+    const nextIndex = (currentIndex + 1) % ranges.length;
+    setDateRange(ranges[nextIndex]);
+  };
+
+  const handleExport = () => {
+    let csvContent = "data:text/csv;charset=utf-8,Metric,Value\nTotal Revenue,₹8,25,590.20\nTotal Orders,6,120\nAverage Bill,₹135.00\nGross Profit,₹1,88,230\nMargin,22.8%\n";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "sales_analytics_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Top 5 Products list
   const bestSellers = [
@@ -82,13 +105,22 @@ export default function SalesAnalytics() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs font-sans">
-          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" /> Jan 01, 2026 - May 17, 2026 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+          <button
+            onClick={handleDateRangeChange}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm"
+          >
+            <Calendar className="w-3.5 h-3.5 text-slate-400" /> {dateRange} <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
+          <button
+            onClick={() => alert("Analytics segment filters refreshed.")}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm"
+          >
             <Filter className="w-3.5 h-3.5 text-slate-400" /> Filters <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm">
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm"
+          >
             <Download className="w-3.5 h-3.5 text-slate-400" /> Export <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
