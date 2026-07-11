@@ -6,13 +6,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Default PostgreSQL Connection URI if not specified in environment
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
     "postgresql://postgres:postgres@localhost:5432/retail_db"
 )
 
 engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

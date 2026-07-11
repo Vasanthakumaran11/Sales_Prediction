@@ -25,29 +25,48 @@ import { STORE_PROFILES } from "@/lib/mock/stores";
 import { useStoreContext } from "@/context/StoreContext";
 
 export default function DataEntryView() {
-  const { setHistoryLogs } = useStoreContext();
+  const { activeStore, setHistoryLogs } = useStoreContext();
   const catalog = flattenCatalog();
 
   // Sales Information Form State
   const [salesInfo, setSalesInfo] = useState({
-    storeId: STORE_PROFILES[0].id,
-    date: new Date().toISOString().split("T")[0],
+    storeId: activeStore?.id || STORE_PROFILES[0].id,
+    date: new Date().toLocaleDateString('en-CA'),
     dayOfWeek: new Date().toLocaleDateString("en-US", { weekday: "long" }),
-    businessType: "Super Market",
+    businessType: activeStore?.type || "Super Market",
     dataSource: "Manual Entry",
-    uploadedBy: "Arjun Sharma",
+    uploadedBy: activeStore?.name ? `${activeStore.name} Manager` : "Arjun Sharma",
     notes: "",
     paymentMode: "Cash: 50%, UPI: 40%, Card: 10%",
   });
 
   // Rows of products in the table
-  const [rows, setRows] = useState([
-    { id: 1, name: "Tata Tea Premium 250g", category: "Beverages", unit: "pcs", price: 150, qty: 25, discount: 5, checked: false },
-    { id: 2, name: "Aashirvaad Atta 5kg", category: "Staples & Grains", unit: "pcs", price: 270, qty: 40, discount: 2, checked: false },
-    { id: 3, name: "Amul Salted Butter 100g", category: "Perishables", unit: "pcs", price: 68, qty: 60, discount: 0, checked: false },
-    { id: 4, name: "Namkeen", category: "Snacks & Biscuits", unit: "pcs", price: 14, qty: 120, discount: 0, checked: false },
-    { id: 5, name: "Soap", category: "Personal Care", unit: "pcs", price: 210, qty: 18, discount: 3, checked: false },
-  ]);
+  const [rows, setRows] = useState([]);
+
+  // Sync state when activeStore shifts — use setTimeout to defer
+  // setState out of the effect body to avoid cascading renders
+  useEffect(() => {
+    if (!activeStore) return;
+    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
+    const isDemo = demoIds.includes(activeStore.id);
+    const timer = setTimeout(() => {
+      setSalesInfo((prev) => ({
+        ...prev,
+        storeId: activeStore.id,
+        businessType: activeStore.type || "Super Market",
+        uploadedBy: `${activeStore.name} Manager`,
+        date: new Date().toLocaleDateString('en-CA')
+      }));
+      setRows(isDemo ? [
+        { id: 1, name: "Tata Tea Premium 250g", category: "Beverages", unit: "pcs", price: 150, qty: 25, discount: 5, checked: false },
+        { id: 2, name: "Aashirvaad Atta 5kg", category: "Staples & Grains", unit: "pcs", price: 270, qty: 40, discount: 2, checked: false },
+        { id: 3, name: "Amul Salted Butter 100g", category: "Perishables", unit: "pcs", price: 68, qty: 60, discount: 0, checked: false },
+        { id: 4, name: "Namkeen", category: "Snacks & Biscuits", unit: "pcs", price: 14, qty: 120, discount: 0, checked: false },
+        { id: 5, name: "Soap", category: "Personal Care", unit: "pcs", price: 210, qty: 18, discount: 3, checked: false },
+      ] : []);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeStore]);
 
   const [allChecked, setAllChecked] = useState(false);
   const [showSaveMessage, setShowSaveMessage] = useState(false);
@@ -136,7 +155,7 @@ export default function DataEntryView() {
   const totalQtySold = rows.reduce((sum, r) => sum + (parseInt(r.qty) || 0), 0);
   const avgBillValue = totalItemsSold > 0 ? totalPayable / totalItemsSold : 0;
 
-  const handleSaveAllData = () => {
+  const handleSaveAllData = async () => {
     // Parse date into readable form (e.g. May 18, 2026)
     const formattedDate = new Date(salesInfo.date).toLocaleDateString("en-US", {
       month: "short",
@@ -152,6 +171,41 @@ export default function DataEntryView() {
       net: netSales,
       checked: true
     };
+
+    // Save Daily Log summary directly to Backend Database API if live config is set
+    if (activeStore) {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+      if (apiBase) {
+        try {
+          const response = await fetch(`${apiBase}/api/stores/${activeStore.id}/daily-log`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              date: formattedDate,
+              paymentDetails: {
+                cash: parseFloat(salesInfo.paymentMode.toLowerCase().includes("cash") ? totalPayable : 0) || totalPayable,
+                upi: parseFloat(salesInfo.paymentMode.toLowerCase().includes("upi") ? totalPayable : 0) || 0,
+                card: parseFloat(salesInfo.paymentMode.toLowerCase().includes("card") ? totalPayable : 0) || 0
+              },
+              items: rows.map(r => ({
+                productId: r.name,
+                qty: parseInt(r.qty) || 0,
+                discount: parseFloat(r.discount) || 0.0
+              })),
+              notes: salesInfo.notes || ""
+            })
+          });
+
+          if (!response.ok) {
+            console.error("Failed to persist daily sales log to database.");
+          } else {
+            console.log("Daily sales log saved to database successfully.");
+          }
+        } catch (err) {
+          console.error("Connection failure writing daily sales logs to DB:", err);
+        }
+      }
+    }
 
     setHistoryLogs((prev) => [newLog, ...prev]);
     setShowSaveMessage(true);
@@ -236,19 +290,13 @@ export default function DataEntryView() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 text-xs font-sans">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-              Select Store *
+              Store Name
             </label>
-            <select
-              value={salesInfo.storeId}
-              onChange={(e) => setSalesInfo((prev) => ({ ...prev, storeId: e.target.value }))}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
-            >
-              {STORE_PROFILES.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.location})
-                </option>
-              ))}
-            </select>
+            <input
+              value={activeStore ? activeStore.name : "Balaji Store"}
+              readOnly
+              className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-500 cursor-not-allowed font-semibold focus:outline-none"
+            />
           </div>
 
           <div className="space-y-1">
@@ -310,331 +358,330 @@ export default function DataEntryView() {
         </div>
       </Card>
 
-      {/* Section 2: Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {/* Total Sales */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-            <DollarSign className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Sales (₹)</span>
-            <span className="text-sm font-black text-slate-900 leading-none">₹{totalPayable.toLocaleString()}</span>
-          </div>
-        </div>
+      {/* Section 2: Stats Grid, Product Table, Bottom Grid, and Footer wrapped in conditional render */}
+      {rows.length > 0 ? (
+        <>
+          {/* Section 2: Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {/* Total Sales */}
+            <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Sales (₹)</span>
+                <span className="text-sm font-black text-slate-900 leading-none">₹{totalPayable.toLocaleString()}</span>
+              </div>
+            </div>
 
-        {/* Total Items Sold */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-            <Package className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Items Sold</span>
-            <span className="text-sm font-black text-slate-900 leading-none">{totalItemsSold}</span>
-          </div>
-        </div>
+            {/* Total Items Sold */}
+            <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <Package className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Items Sold</span>
+                <span className="text-sm font-black text-slate-900 leading-none">{totalItemsSold}</span>
+              </div>
+            </div>
 
-        {/* Total Quantity */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Quantity</span>
-            <span className="text-sm font-black text-slate-900 leading-none">{totalQtySold}</span>
-          </div>
-        </div>
+            {/* Total Quantity */}
+            <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Quantity</span>
+                <span className="text-sm font-black text-slate-900 leading-none">{totalQtySold}</span>
+              </div>
+            </div>
 
-        {/* Average Bill Value */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-605">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider">Average Bill Value</span>
-            <span className="text-sm font-black text-slate-900 leading-none">₹{Math.round(avgBillValue).toLocaleString()}</span>
-          </div>
-        </div>
+            {/* Average Bill Value */}
+            <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-605">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider">Average Bill Value</span>
+                <span className="text-sm font-black text-slate-900 leading-none">₹{Math.round(avgBillValue).toLocaleString()}</span>
+              </div>
+            </div>
 
-        {/* Total Transactions */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-600">
-            <Info className="w-5 h-5" />
+            {/* Total Transactions */}
+            <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-600">
+                <Info className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider">Total Transactions</span>
+                <span className="text-sm font-black text-slate-900 leading-none">1,320</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <span className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider">Total Transactions</span>
-            <span className="text-sm font-black text-slate-900 leading-none">1,320</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Section 3: Product Sales Details */}
-      <Card className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-slate-100">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif">
-            Product Sales Details
-          </h3>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleAddProduct}
-              className="flex items-center gap-1 px-3 py-1.5 border border-blue-500 text-blue-650 hover:bg-blue-50 text-xs font-bold rounded-lg transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Product
-            </button>
-            <button
-              type="button"
-              onClick={handleRemoveSelected}
-              disabled={!rows.some((r) => r.checked)}
-              className="flex items-center gap-1 px-3 py-1.5 border border-rose-500 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-lg transition-all disabled:opacity-40"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Remove Selected
-            </button>
-          </div>
-        </div>
+          {/* Section 3: Product Sales Details */}
+          <Card className="space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif">
+                Product Sales Details
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddProduct}
+                  className="flex items-center gap-1 px-3 py-1.5 border border-blue-500 text-blue-650 hover:bg-blue-50 text-xs font-bold rounded-lg transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Product
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemoveSelected}
+                  disabled={!rows.some((r) => r.checked)}
+                  className="flex items-center gap-1 px-3 py-1.5 border border-rose-500 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-lg transition-all disabled:opacity-40"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Remove Selected
+                </button>
+              </div>
+            </div>
 
-        {/* Interactive Data entry table */}
-        <div className="overflow-x-auto border border-sky-100 rounded-xl bg-white">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-sky-100 text-slate-500 font-bold text-[9px] uppercase tracking-wider">
-                <th className="p-3 w-10 text-center">
+            {/* Interactive Data entry table */}
+            <div className="overflow-x-auto border border-sky-100 rounded-xl bg-white">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-sky-100 text-slate-500 font-bold text-[9px] uppercase tracking-wider">
+                    <th className="p-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={handleToggleAllChecked}
+                        className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 accent-blue-600"
+                      />
+                    </th>
+                    <th className="p-3 min-w-[200px]">Product Name / SKU</th>
+                    <th className="p-3">Category</th>
+                    <th className="p-3 w-20">Unit</th>
+                    <th className="p-3 w-28 text-right">Selling Price (₹)</th>
+                    <th className="p-3 w-24 text-right">Quantity Sold</th>
+                    <th className="p-3 w-24 text-right">Discount (%)</th>
+                    <th className="p-3 w-28 text-right">Sales Amount (₹)</th>
+                    <th className="p-3 w-16 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-sans">
+                  {rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-sky-50/10 text-slate-700 transition-colors">
+                      <td className="p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={row.checked}
+                          onChange={() => handleToggleCheck(row.id)}
+                          className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 accent-blue-600"
+                        />
+                      </td>
+                      <td className="p-3">
+                        <select
+                          value={row.name}
+                          onChange={(e) => handleRowChange(row.id, "name", e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 font-serif font-semibold"
+                        >
+                          {catalog.map((catItem) => (
+                            <option key={catItem.name} value={catItem.name}>
+                              {catItem.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-3 font-semibold text-slate-500">{row.category}</td>
+                      <td className="p-3 text-slate-800 font-semibold">{row.unit}</td>
+                      <td className="p-3 text-right font-semibold text-slate-850">
+                        ₹{row.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-3 text-right">
+                        <input
+                          type="number"
+                          value={row.qty}
+                          onChange={(e) => handleRowChange(row.id, "qty", parseInt(e.target.value) || 0)}
+                          className="w-16 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-right text-xs focus:outline-none focus:border-sky-500 font-semibold"
+                        />
+                      </td>
+                      <td className="p-3 text-right">
+                        <input
+                          type="number"
+                          value={row.discount}
+                          onChange={(e) => handleRowChange(row.id, "discount", parseInt(e.target.value) || 0)}
+                          className="w-16 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-right text-xs focus:outline-none focus:border-sky-500 text-rose-500 font-semibold"
+                        />
+                      </td>
+                      <td className="p-3 text-right font-bold text-slate-900">
+                        ₹{((row.price * row.qty) * (1 - row.discount / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setRows((prev) => prev.filter((r) => r.id !== row.id))}
+                          className="p-1 text-slate-400 hover:text-rose-500 rounded hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Section 4: Bottom Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start font-sans">
+            {/* Additional Information */}
+            <Card className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif pb-2 border-b border-slate-100">
+                Additional Information
+              </h3>
+
+              <div className="space-y-4 text-xs">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Payment Mode Breakup
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={allChecked}
-                    onChange={handleToggleAllChecked}
-                    className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 accent-blue-600"
+                    type="text"
+                    value={salesInfo.paymentMode}
+                    onChange={(e) => setSalesInfo((prev) => ({ ...prev, paymentMode: e.target.value }))}
+                    placeholder="e.g. Cash: 70%, Card: 20%, UPI: 10%"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
                   />
-                </th>
-                <th className="p-3 min-w-[200px]">Product Name / SKU</th>
-                <th className="p-3">Category</th>
-                <th className="p-3 w-20">Unit</th>
-                <th className="p-3 w-28 text-right">Selling Price (₹)</th>
-                <th className="p-3 w-24 text-right">Quantity Sold</th>
-                <th className="p-3 w-24 text-right">Discount (%)</th>
-                <th className="p-3 w-28 text-right">Sales Amount (₹)</th>
-                <th className="p-3 w-16 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-sans">
-              {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-sky-50/10 text-slate-700 transition-colors">
-                  <td className="p-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked={row.checked}
-                      onChange={() => handleToggleCheck(row.id)}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 accent-blue-600"
-                    />
-                  </td>
-                  <td className="p-3">
-                    <select
-                      value={row.name}
-                      onChange={(e) => handleRowChange(row.id, "name", e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 font-serif font-semibold"
-                    >
-                      {catalog.map((catItem) => (
-                        <option key={catItem.name} value={catItem.name}>
-                          {catItem.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-3">
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Notes (Optional)
+                  </label>
+                  <textarea
+                    value={salesInfo.notes}
+                    onChange={(e) => setSalesInfo((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Enter any additional notes about today's sales..."
+                    className="w-full h-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Uploaded By
+                    </label>
                     <input
                       type="text"
-                      value={row.category}
+                      value={salesInfo.uploadedBy}
                       readOnly
-                      className="w-full bg-slate-100 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-500 cursor-not-allowed"
+                      className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 cursor-not-allowed"
                     />
-                  </td>
-                  <td className="p-3">
-                    <select
-                      value={row.unit}
-                      onChange={(e) => handleRowChange(row.id, "unit", e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-800 focus:outline-none"
-                    >
-                      <option>pcs</option>
-                      <option>kg</option>
-                      <option>pkts</option>
-                      <option>liters</option>
-                    </select>
-                  </td>
-                  <td className="p-3 text-right">
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Entry Timestamp
+                    </label>
                     <input
-                      type="number"
-                      value={row.price}
-                      onChange={(e) => handleRowChange(row.id, "price", parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
+                      type="text"
+                      value={`${salesInfo.date} 10:30 AM`}
+                      readOnly
+                      className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 cursor-not-allowed"
                     />
-                  </td>
-                  <td className="p-3 text-right">
-                    <input
-                      type="number"
-                      value={row.qty}
-                      onChange={(e) => handleRowChange(row.id, "qty", parseInt(e.target.value) || 0)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
-                    />
-                  </td>
-                  <td className="p-3 text-right">
-                    <input
-                      type="number"
-                      value={row.discount}
-                      onChange={(e) => handleRowChange(row.id, "discount", parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-850 text-right focus:outline-none focus:border-sky-550"
-                    />
-                  </td>
-                  <td className="p-3 text-right font-semibold text-slate-900">
-                    ₹{calculateRowAmount(row).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="p-3 text-center">
-                    <button
-                      type="button"
-                      onClick={() => setRows((prev) => prev.filter((r) => r.id !== row.id))}
-                      className="p-1 text-slate-400 hover:text-rose-500 rounded hover:bg-rose-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Section 4: Bottom Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start font-sans">
-        {/* Additional Information */}
-        <Card className="space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif pb-2 border-b border-slate-100">
-            Additional Information
-          </h3>
-
-          <div className="space-y-4 text-xs">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                Payment Mode Breakup
-              </label>
-              <input
-                type="text"
-                value={salesInfo.paymentMode}
-                onChange={(e) => setSalesInfo((prev) => ({ ...prev, paymentMode: e.target.value }))}
-                placeholder="e.g. Cash: 70%, Card: 20%, UPI: 10%"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                Notes (Optional)
-              </label>
-              <textarea
-                value={salesInfo.notes}
-                onChange={(e) => setSalesInfo((prev) => ({ ...prev, notes: e.target.value }))}
-                placeholder="Enter any additional notes about today's sales..."
-                className="w-full h-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Uploaded By
-                </label>
-                <input
-                  type="text"
-                  value={salesInfo.uploadedBy}
-                  readOnly
-                  className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 cursor-not-allowed"
-                />
+                  </div>
+                </div>
               </div>
+            </Card>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Entry Timestamp
-                </label>
-                <input
-                  type="text"
-                  value={`${salesInfo.date} 10:30 AM`}
-                  readOnly
-                  className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 cursor-not-allowed"
-                />
+            {/* Sales Summary Card */}
+            <Card className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif pb-2 border-b border-slate-100">
+                Sales Summary
+              </h3>
+
+              <div className="space-y-3.5 text-xs">
+                <div className="flex justify-between items-center py-0.5">
+                  <span className="text-slate-500">Gross Sales</span>
+                  <span className="font-semibold text-slate-850">
+                    ₹{grossSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-0.5">
+                  <span className="text-slate-500">Total Discount</span>
+                  <span className="font-semibold text-rose-600">
+                    - ₹{totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-0.5 border-t border-slate-100 pt-2.5">
+                  <span className="text-slate-505 font-bold">Net Sales</span>
+                  <span className="font-black text-emerald-600 text-sm">
+                    ₹{netSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-0.5">
+                  <span className="text-slate-505">Tax Amount (18%)</span>
+                  <span className="font-semibold text-slate-800">
+                    ₹{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-0.5">
+                  <span className="text-slate-505">Rounding Adjustment</span>
+                  <span className="font-semibold text-slate-800">
+                    ₹{rounding.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-3 border-t border-sky-100 pt-3">
+                  <span className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] font-serif">
+                    Total Payable
+                  </span>
+                  <span className="font-black text-blue-600 text-lg">
+                    ₹{totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
-            </div>
+            </Card>
           </div>
-        </Card>
 
-        {/* Sales Summary Card */}
-        <Card className="space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif pb-2 border-b border-slate-100">
-            Sales Summary
-          </h3>
-
-          <div className="space-y-3.5 text-xs">
-            <div className="flex justify-between items-center py-0.5">
-              <span className="text-slate-500">Gross Sales</span>
-              <span className="font-semibold text-slate-850">
-                ₹{grossSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center py-0.5">
-              <span className="text-slate-500">Total Discount</span>
-              <span className="font-semibold text-rose-600">
-                - ₹{totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center py-0.5 border-t border-slate-100 pt-2.5">
-              <span className="text-slate-505 font-bold">Net Sales</span>
-              <span className="font-black text-emerald-600 text-sm">
-                ₹{netSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center py-0.5">
-              <span className="text-slate-505">Tax Amount (18%)</span>
-              <span className="font-semibold text-slate-800">
-                ₹{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center py-0.5">
-              <span className="text-slate-505">Rounding Adjustment</span>
-              <span className="font-semibold text-slate-800">
-                ₹{rounding.toFixed(2)}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center py-3 border-t border-sky-100 pt-3">
-              <span className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] font-serif">
-                Total Payable
-              </span>
-              <span className="font-black text-blue-600 text-lg">
-                ₹{totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
+          {/* Footer controls */}
+          <div className="border-t border-sky-200/60 pt-5 flex items-center justify-between font-sans">
+            <button
+              type="button"
+              onClick={() => setRows([])}
+              className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+            >
+              Clear All <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+            <button
+              onClick={handleSaveAllData}
+              className="flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 hover:bg-blue-505 text-white text-xs font-extrabold rounded-lg transition-all shadow-md"
+            >
+              <Save className="w-4 h-4" /> Save All Data
+            </button>
           </div>
+        </>
+      ) : (
+        <Card className="p-12 text-center space-y-5 border border-sky-100 bg-white rounded-2xl shadow-sm max-w-md mx-auto">
+          <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
+            <Plus className="w-6 h-6 animate-pulse" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-850 font-serif">Empty Daily Sales Log</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+            There are no sales items added to today&apos;s ledger. Click the button below to add your first sales transaction.
+          </p>
+          <button
+            type="button"
+            onClick={handleAddProduct}
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all shadow-md"
+          >
+            <Plus className="w-4 h-4" /> Add Product Item
+          </button>
         </Card>
-      </div>
-
-      {/* Footer controls */}
-      <div className="border-t border-sky-200/60 pt-5 flex items-center justify-between font-sans">
-        <button
-          type="button"
-          onClick={() => setRows([])}
-          className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
-        >
-          Clear All <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-        </button>
-        <button
-          onClick={handleSaveAllData}
-          className="flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 hover:bg-blue-505 text-white text-xs font-extrabold rounded-lg transition-all shadow-md"
-        >
-          <Save className="w-4 h-4" /> Save All Data
-        </button>
-      </div>
+      )}
     </div>
   );
 }

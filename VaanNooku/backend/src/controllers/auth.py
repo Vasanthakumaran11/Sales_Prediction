@@ -1,12 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from jose import jwt
-from datetime import datetime, timedelta
 from src.models import models
 from src.schemas import schemas
-
-JWT_SECRET = "retail_ai_secret_key_9988"
-ALGORITHM = "HS256"
 
 def login_store(db: Session, request: schemas.LoginRequest):
     # Find store matching username/name
@@ -21,15 +16,14 @@ def login_store(db: Session, request: schemas.LoginRequest):
             detail="Store credentials not found."
         )
 
-    # Issue access token
-    access_token = jwt.encode(
-        {"sub": store.id, "exp": datetime.utcnow() + timedelta(days=7)},
-        JWT_SECRET,
-        algorithm=ALGORITHM
-    )
+    if store.password and store.password != request.password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect store password."
+        )
 
     return {
-        "token": access_token,
+        "token": "auth-token-disabled",
         "store": {
             "id": store.id,
             "name": store.name,
@@ -38,6 +32,10 @@ def login_store(db: Session, request: schemas.LoginRequest):
             "investment": store.investment,
             "openingMonth": store.opening_month,
             "monthsActive": store.months_active,
+            "adminName": store.admin_name,
+            "adminEmail": store.admin_email,
+            "adminPhone": store.admin_phone,
+            "adminRole": store.admin_role,
             "metrics": {
                 "forecastR2": 0.932,
                 "wasteMargin": 0.024,
@@ -62,11 +60,16 @@ def register_store(db: Session, request: schemas.StoreRegisterRequest):
     new_store = models.Store(
         id=store_id,
         name=request.storeName,
+        password=request.password,
         type=request.storeType,
         location=request.locationType,
         investment=request.investment,
         opening_month=request.openingMonth,
-        months_active=12
+        months_active=12,
+        admin_name=request.adminName,
+        admin_email=request.adminEmail,
+        admin_phone=request.adminPhone,
+        admin_role=request.adminRole or "Store Owner"
     )
     db.add(new_store)
     db.commit()
@@ -88,7 +91,7 @@ def register_store(db: Session, request: schemas.StoreRegisterRequest):
             db.add(new_sup)
             db.commit()
 
-    # Ingest catalog products
+    # Ingest catalog products dynamically if provided
     if request.productsList:
         for p in request.productsList:
             prod_id = p.name.lower().strip().replace(" ", "-").replace("/", "-")
@@ -122,22 +125,23 @@ def register_store(db: Session, request: schemas.StoreRegisterRequest):
             )
             db.add(new_stock)
             db.commit()
-    else:
-        # Default seeds
-        default_prods = db.query(models.Product).limit(5).all()
-        for dp in default_prods:
-            new_stock = models.StockLevel(
-                store_id=store_id,
-                product_id=dp.id,
-                current_stock=100,
-                safety_stock=15,
-                reorder_point=30
-            )
-            db.add(new_stock)
-            db.commit()
 
     return {
-        "success": True,
-        "storeId": store_id,
-        "message": "Store successfully registered and inventory initialized."
+        "id": new_store.id,
+        "name": new_store.name,
+        "type": new_store.type,
+        "location": new_store.location,
+        "investment": new_store.investment,
+        "openingMonth": new_store.opening_month,
+        "monthsActive": new_store.months_active,
+        "adminName": new_store.admin_name,
+        "adminEmail": new_store.admin_email,
+        "adminPhone": new_store.admin_phone,
+        "adminRole": new_store.admin_role,
+        "metrics": {
+            "forecastR2": 0.90,
+            "wasteMargin": 0.05,
+            "stockouts": 0,
+            "deficitCount": 0
+        }
     }

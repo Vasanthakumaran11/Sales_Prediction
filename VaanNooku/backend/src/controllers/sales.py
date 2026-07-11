@@ -85,13 +85,24 @@ def parse_sales_csv(file: UploadFile):
         contents = file.file.read()
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
         
-        # Simulate loading products from csv upload
-        parsed_products = [
-            { "id": 201, "name": "Premium Kolam Rice 10kg", "category": "Staples & Grains", "buyingPrice": 580.0, "sellingPrice": 650.0, "qty": 100, "checked": True },
-            { "id": 202, "name": "Madhur Pure Sugar 5kg", "category": "Staples & Grains", "buyingPrice": 210.0, "sellingPrice": 240.0, "qty": 150, "checked": True },
-            { "id": 203, "name": "Britannia Marie Gold 250g", "category": "Snacks & Biscuits", "buyingPrice": 30.0, "sellingPrice": 35.0, "qty": 500, "checked": True },
-            { "id": 204, "name": "Amul Pure Ghee 1L", "category": "Dairy & Bakery", "buyingPrice": 610.0, "sellingPrice": 650.0, "qty": 60, "checked": True }
-        ]
+        parsed_products = []
+        for idx, row in df.iterrows():
+            # Support multiple spelling variants for column headers
+            name = str(row.get('name', row.get('Product Name', row.get('product', f"Product {idx+1}"))))
+            qty = int(row.get('qty', row.get('Quantity', row.get('quantity', 50))))
+            buying_price = float(row.get('buyingPrice', row.get('Buying Price', row.get('cost', 10.0))))
+            selling_price = float(row.get('sellingPrice', row.get('Selling Price', row.get('price', 12.0))))
+            category = str(row.get('category', row.get('Category', 'Staples & Grains')))
+            
+            parsed_products.append({
+                "id": idx + 100,
+                "name": name,
+                "category": category,
+                "buyingPrice": buying_price,
+                "sellingPrice": selling_price,
+                "qty": qty,
+                "checked": True
+            })
         
         return {
             "itemsCount": len(parsed_products),

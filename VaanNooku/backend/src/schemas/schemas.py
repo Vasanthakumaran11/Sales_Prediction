@@ -17,12 +17,18 @@ class ProductBase(BaseModel):
 
 class StoreRegisterRequest(BaseModel):
     storeName: str
+    password: Optional[str] = None
     storeType: Optional[str] = "Supermarket"
     locationType: Optional[str] = "Urban"
     openingMonth: Optional[str] = "October"
     investment: float
     productsList: Optional[List[ProductBase]] = []
     supplier: Optional[SupplierBase] = None
+    # Admin / Owner details collected at signup
+    adminName: Optional[str] = None
+    adminEmail: Optional[str] = None
+    adminPhone: Optional[str] = None
+    adminRole: Optional[str] = "Store Owner"
 
 class LoginRequest(BaseModel):
     username: str
@@ -65,5 +71,6 @@ class ProfileUpdateRequest(BaseModel):
     phone: str
 
 class PasswordUpdateRequest(BaseModel):
+    storeId: str
     currentPassword: str
     newPassword: str

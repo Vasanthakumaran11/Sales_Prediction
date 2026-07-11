@@ -71,14 +71,9 @@ def get_bulk_consolidation(db: Session):
 
     items = list(items_map.values())
     
-    # Ensure minimum quantity of 20 for bulk contract if empty
+    # Return empty list if no shortage exists
     if not items:
-        items = [{
-            "name": "Aashirvaad Chakki Atta 5kg",
-            "price": 245.0,
-            "totalQty": 50,
-            "standardCost": 12250.0
-        }]
+        items = []
 
     total_standard_cost = sum(i["standardCost"] for i in items)
     discount_rate = 0.15

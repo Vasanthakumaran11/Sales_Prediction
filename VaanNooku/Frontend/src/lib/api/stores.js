@@ -19,10 +19,10 @@ export async function getStore(storeId) {
   );
 }
 
-// POST /api/stores
+// POST /api/stores/register
 export async function registerStore(payload) {
   return resolveData(
-    "/api/stores",
+    "/api/stores/register",
     () => {
       const store = {
         id: `store-${Date.now()}`,
@@ -48,3 +48,13 @@ export async function registerStore(payload) {
     { method: "POST", body: JSON.stringify(payload) }
   );
 }
+
+// POST /api/auth/login
+export async function loginStore(credentials) {
+  return resolveData(
+    "/api/auth/login",
+    () => null, // fallback to null to trigger mock matching in gateway if backend is offline
+    { method: "POST", body: JSON.stringify(credentials) }
+  );
+}
+

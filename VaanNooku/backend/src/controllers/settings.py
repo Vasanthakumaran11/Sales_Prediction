@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from fastapi.responses import StreamingResponse
+from starlette.responses import StreamingResponse
 import io
 import json
 from datetime import datetime
@@ -14,7 +14,16 @@ def update_profile(request: schemas.ProfileUpdateRequest):
         "user": request.dict()
     }
 
-def update_password(request: schemas.PasswordUpdateRequest):
+def update_password(db: Session, request: schemas.PasswordUpdateRequest):
+    store = db.query(models.Store).filter(models.Store.id == request.storeId).first()
+    if not store:
+        raise HTTPException(status_code=404, detail="Store node not found.")
+    
+    if store.password and store.password != request.currentPassword:
+        raise HTTPException(status_code=400, detail="Invalid current password.")
+        
+    store.password = request.newPassword
+    db.commit()
     return {
         "success": True,
         "message": "Password changed successfully."

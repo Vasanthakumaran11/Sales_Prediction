@@ -1,73 +1,184 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles, Package, HelpCircle, ArrowRight, TrendingUp, DollarSign, BarChart3, Layers, CheckCircle } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
+import { useStoreContext } from "@/context/StoreContext";
+
+const DEFAULT_CATEGORIES = [
+  {
+    id: "staples",
+    name: "Staples & Grains",
+    itemCount: 4,
+    totalStock: 380,
+    color: "bg-sky-50 border-sky-200 text-sky-700",
+    products: [
+      { name: "India Gate Basmati Rice 1kg", sku: "IG-RICE-1KG", stock: 120 },
+      { name: "Aashirvaad Atta 5kg", sku: "AASH-ATTA-5KG", stock: 60 },
+      { name: "Sugar Premium 1kg", sku: "SUG-1KG", stock: 150 },
+      { name: "Moong Dal 1kg", sku: "DAL-MOONG-1", stock: 50 },
+    ],
+  },
+  {
+    id: "dairy",
+    name: "Dairy & Bakery",
+    itemCount: 3,
+    totalStock: 395,
+    color: "bg-blue-50 border-blue-200 text-blue-700",
+    products: [
+      { name: "Amul Taaza Milk 1L", sku: "AMUL-MILK-1L", stock: 245 },
+      { name: "Amul Salted Butter 100g", sku: "AMUL-BUTTER-100", stock: 90 },
+      { name: "Britannia Bread Family Pack", sku: "BRIT-BREAD-F", stock: 60 },
+    ],
+  },
+  {
+    id: "beverages",
+    name: "Beverages",
+    itemCount: 3,
+    totalStock: 150,
+    color: "bg-teal-50 border-teal-200 text-teal-700",
+    products: [
+      { name: "Tata Tea Premium 250g", sku: "TATA-TEA-250", stock: 0 },
+      { name: "Nescafe Gold 100g", sku: "NES-GOLD-100", stock: 45 },
+      { name: "Coca Cola 1.25L", sku: "COKE-1.25L", stock: 105 },
+    ],
+  },
+  {
+    id: "household",
+    name: "Household Essentials",
+    itemCount: 2,
+    totalStock: 110,
+    color: "bg-indigo-50 border-indigo-200 text-indigo-700",
+    products: [
+      { name: "Surf Excel Matic 1kg", sku: "SURF-1KG", stock: 35 },
+      { name: "Vim Liquid Soap 500ml", sku: "VIM-500ML", stock: 75 },
+    ],
+  },
+];
 
 export default function AIPredictions() {
+  const { historyLogs, activeStore, storeProducts } = useStoreContext();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [predicting, setPredicting] = useState(false);
   const [showPredictions, setShowPredictions] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [forecastData, setForecastData] = useState(null);
 
-  // Mock catalog categories and items list
-  const categories = [
-    {
-      id: "staples",
-      name: "Staples & Grains",
-      itemCount: 4,
-      totalStock: 380,
-      color: "bg-sky-50 border-sky-200 text-sky-700",
-      products: [
-        { name: "India Gate Basmati Rice 1kg", sku: "IG-RICE-1KG", stock: 120 },
-        { name: "Aashirvaad Atta 5kg", sku: "AASH-ATTA-5KG", stock: 60 },
-        { name: "Sugar Premium 1kg", sku: "SUG-1KG", stock: 150 },
-        { name: "Moong Dal 1kg", sku: "DAL-MOONG-1", stock: 50 },
-      ],
-    },
-    {
-      id: "dairy",
-      name: "Dairy & Bakery",
-      itemCount: 3,
-      totalStock: 395,
-      color: "bg-blue-50 border-blue-200 text-blue-700",
-      products: [
-        { name: "Amul Taaza Milk 1L", sku: "AMUL-MILK-1L", stock: 245 },
-        { name: "Amul Salted Butter 100g", sku: "AMUL-BUTTER-100", stock: 90 },
-        { name: "Britannia Bread Family Pack", sku: "BRIT-BREAD-F", stock: 60 },
-      ],
-    },
-    {
-      id: "beverages",
-      name: "Beverages",
-      itemCount: 3,
-      totalStock: 150,
-      color: "bg-teal-50 border-teal-200 text-teal-700",
-      products: [
-        { name: "Tata Tea Premium 250g", sku: "TATA-TEA-250", stock: 0 },
-        { name: "Nescafe Gold 100g", sku: "NES-GOLD-100", stock: 45 },
-        { name: "Coca Cola 1.25L", sku: "COKE-1.25L", stock: 105 },
-      ],
-    },
-    {
-      id: "household",
-      name: "Household Essentials",
-      itemCount: 2,
-      totalStock: 110,
-      color: "bg-indigo-50 border-indigo-200 text-indigo-700",
-      products: [
-        { name: "Surf Excel Matic 1kg", sku: "SURF-1KG", stock: 35 },
-        { name: "Vim Liquid Soap 500ml", sku: "VIM-500ML", stock: 75 },
-      ],
-    },
-  ];
+  useEffect(() => {
+    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
+    const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+    if (!isDemo && activeStore) {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+      if (apiBase) {
+        fetch(`${apiBase}/api/stores/${activeStore.id}/predictions/stock-summary`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) {
+              const mapped = data.map((c, idx) => {
+                const colors = [
+                  "bg-sky-50 border-sky-200 text-sky-700",
+                  "bg-blue-50 border-blue-200 text-blue-700",
+                  "bg-teal-50 border-teal-200 text-teal-700",
+                  "bg-indigo-50 border-indigo-200 text-indigo-700"
+                ];
+                return {
+                  id: c.category.toLowerCase().replace(" ", "-"),
+                  name: c.category,
+                  itemCount: c.skuCount,
+                  totalStock: c.totalStock,
+                  color: colors[idx % colors.length],
+                  products: []
+                };
+              });
+              setCategories(mapped);
+            }
+          })
+          .catch((err) => console.error("Error fetching stock summary predictions:", err));
+      }
+    } else {
+      setCategories(DEFAULT_CATEGORIES);
+    }
+  }, [activeStore]);
 
-  const handlePredict = () => {
-    setPredicting(true);
-    setTimeout(() => {
-      setPredicting(false);
-      setShowPredictions(true);
-    }, 1500);
+  const handleCategoryClick = (cat) => {
+    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
+    const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+    if (isDemo) {
+      setSelectedCategory(cat);
+    } else {
+      const catProducts = (storeProducts || []).filter(p => p.category === cat.name).map(p => ({
+        name: p.name,
+        sku: p.sku,
+        stock: p.stock
+      }));
+      setSelectedCategory({
+        ...cat,
+        products: catProducts.length > 0 ? catProducts : [{ name: "No products registered in category", sku: "N/A", stock: 0 }]
+      });
+    }
   };
+
+  const handlePredict = async () => {
+    setPredicting(true);
+    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
+    const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+    
+    if (!isDemo && activeStore) {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+      if (apiBase) {
+        try {
+          const response = await fetch(`${apiBase}/api/stores/${activeStore.id}/predictions/forecast`, {
+            method: "POST"
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setForecastData(data);
+            setShowPredictions(true);
+          } else {
+            console.error("Prediction forecast endpoint error.");
+          }
+        } catch (err) {
+          console.error("Connection failure fetching demand predictions:", err);
+        }
+      }
+    } else {
+      setForecastData({
+        summary: {
+          projectedRevenue: 945230,
+          projectedUnitsDemand: 5842,
+          confidenceMetricR2: 0.948
+        },
+        weeklyBreakdown: [
+          { week: "Week 1", projectedSales: 207950 },
+          { week: "Week 2", projectedSales: 236300 },
+          { week: "Week 3", projectedSales: 245760 },
+          { week: "Week 4", projectedSales: 255220 }
+        ]
+      });
+      setShowPredictions(true);
+    }
+    setPredicting(false);
+  };
+
+  if (!historyLogs || historyLogs.length === 0) {
+    return (
+      <div className="space-y-6 font-sans px-6">
+        <PageHeader
+          title="AI Demand & Sales Predictions"
+          icon={Sparkles}
+        />
+        <Card className="p-12 text-center space-y-4 max-w-md mx-auto border border-sky-100 bg-white rounded-2xl shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
+            <Sparkles className="w-6 h-6 animate-pulse" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-850 font-serif">Models Not Trained</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+            AI demand forecasting and machine learning prediction models require active store transactions history to begin inference.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 font-sans px-6">
@@ -174,38 +285,44 @@ export default function AIPredictions() {
 
         {showPredictions && !predicting && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in font-sans">
-            {/* Forecast Metrics */}
-            <div className="space-y-4 md:col-span-1 flex flex-col justify-between h-full">
-              <div className="bg-white border border-sky-100 p-4 rounded-xl shadow-sm flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <DollarSign className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Projected Revenue</span>
-                  <span className="text-base font-black text-slate-900 leading-none">₹9,45,230.50</span>
-                </div>
-              </div>
-
-              <div className="bg-white border border-sky-100 p-4 rounded-xl shadow-sm flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Package className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Projected Demand</span>
-                  <span className="text-base font-black text-slate-900 leading-none">5,842 Units</span>
-                </div>
-              </div>
-
-              <div className="bg-white border border-sky-100 p-4 rounded-xl shadow-sm flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Model Confidence</span>
-                  <span className="text-base font-black text-slate-900 leading-none">94.8% R²</span>
-                </div>
-              </div>
-            </div>
+             {/* Forecast Metrics */}
+             <div className="space-y-4 md:col-span-1 flex flex-col justify-between h-full">
+               <div className="bg-white border border-sky-100 p-4 rounded-xl shadow-sm flex items-center gap-3 font-sans">
+                 <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                   <DollarSign className="w-4 h-4" />
+                 </div>
+                 <div>
+                   <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Projected Revenue</span>
+                   <span className="text-base font-black text-slate-900 leading-none">
+                     ₹{(forecastData?.summary?.projectedRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                   </span>
+                 </div>
+               </div>
+ 
+               <div className="bg-white border border-sky-100 p-4 rounded-xl shadow-sm flex items-center gap-3 font-sans">
+                 <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                   <Package className="w-4 h-4" />
+                 </div>
+                 <div>
+                   <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Projected Demand</span>
+                   <span className="text-base font-black text-slate-900 leading-none">
+                     {(forecastData?.summary?.projectedUnitsDemand || 0).toLocaleString()} Units
+                   </span>
+                 </div>
+               </div>
+ 
+               <div className="bg-white border border-sky-100 p-4 rounded-xl shadow-sm flex items-center gap-3 font-sans">
+                 <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                   <TrendingUp className="w-4 h-4" />
+                 </div>
+                 <div>
+                   <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Model Confidence</span>
+                   <span className="text-base font-black text-slate-900 leading-none">
+                     {((forecastData?.summary?.confidenceMetricR2 || 0.948) * 100).toFixed(1)}% R²
+                   </span>
+                 </div>
+               </div>
+             </div>
 
             {/* Visual SVG chart */}
             <div className="md:col-span-2 bg-white border border-sky-100 rounded-xl p-4 shadow-sm flex flex-col justify-between h-full min-h-[220px]">

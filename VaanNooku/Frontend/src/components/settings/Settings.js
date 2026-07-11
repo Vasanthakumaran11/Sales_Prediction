@@ -21,12 +21,19 @@ import {
   AlertTriangle,
   Trash2,
   CheckCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
 
 export default function Settings() {
-  const { theme, setTheme, exitToGateway } = useStoreContext();
+  const { theme, setTheme, exitToGateway, activeStore } = useStoreContext();
   const [activeTab, setActiveTab] = useState("profile");
+
+  // Determine if this is a demo store (not a real registered store)
+  const isDemo = activeStore
+    ? ["balaji-store", "shiva-stores", "surya-markets"].includes(activeStore.id)
+    : true;
   
   // Form Preference states
   const [prefs, setPrefs] = useState({
@@ -50,6 +57,14 @@ export default function Settings() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({ ...profile });
 
+  // Store Admin details (shown only if dynamically registered)
+  const [adminDetails, setAdminDetails] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    role: "Store Admin"
+  });
+
   // Password Update Form states
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "password123",
@@ -57,11 +72,58 @@ export default function Settings() {
     confirmNewPassword: ""
   });
 
+  // Password visibility toggles
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Account deletion modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   // Backup logs
   const [lastBackup, setLastBackup] = useState("May 16, 2026 10:30 AM");
 
+  // Sync profile values when activeStore changes
   useEffect(() => {
-    setPrefs((prev) => ({ ...prev, darkMode: theme === "dark" }));
+    if (activeStore) {
+      const defaultProfile = isDemo ? {
+        name: activeStore.name === "Balaji Store" ? "Arjun Sharma" : `${activeStore.name} Admin`,
+        email: activeStore.name === "Balaji Store" ? "arjun.sharma@retailai.com" : `admin@${activeStore.id}.com`,
+        phone: activeStore.name === "Balaji Store" ? "+91 98765 43210" : "+91 99999 88888",
+        role: "Administrator"
+      } : {
+        // Use real admin data from signup if available
+        name: activeStore.adminName || `${activeStore.name} Owner`,
+        email: activeStore.adminEmail || `owner@${activeStore.name.toLowerCase().replace(/\s+/g, "")}.com`,
+        phone: activeStore.adminPhone || "+91 —",
+        role: activeStore.adminRole || "Store Owner"
+      };
+
+      // Defer state updates to avoid synchronous cascading renders warning
+      setTimeout(() => {
+        setProfile(defaultProfile);
+        setProfileForm(defaultProfile);
+
+        if (!isDemo) {
+          setAdminDetails({
+            fullName: `${activeStore.name} Manager`,
+            email: `manager@${activeStore.name.toLowerCase().replace(/\s+/g, "")}.com`,
+            phone: "+91 99999 88888",
+            role: "Store Admin"
+          });
+        }
+      }, 0);
+    }
+  }, [activeStore]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setPrefs((prev) => {
+        if (prev.darkMode !== (theme === "dark")) {
+          return { ...prev, darkMode: theme === "dark" };
+        }
+        return prev;
+      });
+    }, 0);
   }, [theme]);
 
   const [toastMsg, setToastMsg] = useState("");
@@ -166,12 +228,15 @@ export default function Settings() {
   };
 
   const handleDeleteAccount = () => {
-    if (window.confirm("WARNING: Account deletion is permanent and cannot be undone. Are you sure you want to deactivate your license?")) {
-      triggerToast("Deactivating account...");
-      setTimeout(() => {
-        exitToGateway();
-      }, 1000);
-    }
+    setShowDeleteModal(true);
+  };
+
+  const executeDeleteAccount = () => {
+    setShowDeleteModal(false);
+    triggerToast("Deactivating account...");
+    setTimeout(() => {
+      exitToGateway();
+    }, 1000);
   };
 
   // Sidebar settings tabs
@@ -273,6 +338,60 @@ export default function Settings() {
                 </div>
               </Card>
 
+              {/* Store Admin Details (Shown only for dynamically registered stores) */}
+              {!isDemo && (
+                <Card className="p-5 flex flex-col justify-between gap-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 font-serif">Store Admin Details</h3>
+                      <p className="text-[10px] text-slate-500 font-sans">Configure the primary contact person for this outlet.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans mt-1">
+                    <div className="space-y-1">
+                      <label className="text-[9px] text-slate-400 font-bold uppercase">Admin Full Name</label>
+                      <input
+                        type="text"
+                        value={adminDetails.fullName}
+                        onChange={(e) => setAdminDetails(prev => ({ ...prev, fullName: e.target.value }))}
+                        placeholder="e.g. Vasanthakumaran"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-sky-500 font-sans font-semibold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] text-slate-400 font-bold uppercase">Admin Email</label>
+                      <input
+                        type="email"
+                        value={adminDetails.email}
+                        onChange={(e) => setAdminDetails(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="e.g. admin@store.com"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-sky-500 font-sans font-semibold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] text-slate-400 font-bold uppercase">Admin Phone Number</label>
+                      <input
+                        type="text"
+                        value={adminDetails.phone}
+                        onChange={(e) => setAdminDetails(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="e.g. +91 99999 88888"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-sky-500 font-sans font-semibold"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      onClick={() => {
+                        triggerToast("Store admin contact configuration saved successfully.");
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-sm font-sans"
+                    >
+                      Save Admin Details
+                    </button>
+                  </div>
+                </Card>
+              )}
+
               {/* Change Password */}
               <Card className="p-5 flex flex-col justify-between gap-4">
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -295,28 +414,46 @@ export default function Settings() {
                       type="password"
                       value={passwordForm.currentPassword}
                       readOnly
-                      className="w-full bg-slate-150 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 focus:outline-none bg-slate-100"
+                      className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 focus:outline-none"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] text-slate-400 font-bold uppercase">New Password</label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 focus:outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={passwordForm.newPassword}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-slate-700 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-sky-650 transition-colors"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] text-slate-400 font-bold uppercase">Confirm New Password</label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={passwordForm.confirmNewPassword}
-                      onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmNewPassword: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 focus:outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={passwordForm.confirmNewPassword}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmNewPassword: e.target.value }))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-slate-700 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-sky-655 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -505,6 +642,36 @@ export default function Settings() {
               </p>
             </Card>
           )}
+      {/* Custom Account Deletion Overlay Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in font-sans">
+          <div className="bg-white border border-rose-100 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto text-rose-500">
+              <AlertTriangle className="w-8 h-8 animate-bounce" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 font-serif">Confirm Account Deactivation</h3>
+            <p className="text-xs text-slate-555 leading-relaxed">
+              WARNING: Account deletion is permanent and cannot be undone. Are you sure you want to deactivate your license and purge all daily sales history from the server?
+            </p>
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeDeleteAccount}
+                className="py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition-all shadow-md"
+              >
+                Yes, Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

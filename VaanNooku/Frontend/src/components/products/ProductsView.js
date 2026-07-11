@@ -26,88 +26,53 @@ import {
 import { PageHeader, Card } from "@/components/ui/Card";
 import { flattenCatalog } from "@/lib/mock/catalog";
 
+import { useStoreContext } from "@/context/StoreContext";
+
 export default function ProductsView() {
+  const { storeProducts, setStoreProducts, activeStore } = useStoreContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [selectedBrand, setSelectedBrand] = useState("All Brands");
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Link to context products state
+  const products = storeProducts || [];
+  const setProducts = setStoreProducts;
+
   // Mock catalog loaded
   const baseCatalog = flattenCatalog();
 
-  // Re-map and enrich products for the visual grid matching the image
-  const [products, setProducts] = useState([
-    {
-      name: "Amul Taaza Milk 1L",
-      category: "Dairy & Bakery",
-      brand: "Amul",
-      sku: "AMUL-MILK-1L",
-      barcode: "8901262150001",
-      buyingPrice: 56.0,
-      sellingPrice: 68.0,
-      margin: 17.6,
-      stock: 245,
-      status: "Healthy",
-      updated: "May 17, 2026 10:30 AM",
-      img: "🥛",
-    },
-    {
-      name: "India Gate Basmati Rice 1kg",
-      category: "Staples & Grains",
-      brand: "India Gate",
-      sku: "IG-RICE-1KG",
-      barcode: "8901122334455",
-      buyingPrice: 82.0,
-      sellingPrice: 105.0,
-      margin: 21.9,
-      stock: 120,
-      status: "Low Stock",
-      updated: "May 17, 2026 09:45 AM",
-      img: "🌾",
-    },
-    {
-      name: "Fortune Sunflower Oil 1L",
-      category: "Staples & Grains",
-      brand: "Fortune",
-      sku: "FORT-OIL-1L",
-      barcode: "8901030740012",
-      buyingPrice: 135.0,
-      sellingPrice: 160.0,
-      margin: 15.6,
-      stock: 35,
-      status: "Low Stock",
-      updated: "May 17, 2026 1 Hour AM",
-      img: "🌻",
-    },
-    {
-      name: "Tata Tea Premium 250g",
-      category: "Beverages",
-      brand: "Tata Tea",
-      sku: "TATA-TEA-250",
-      barcode: "8901030712345",
-      buyingPrice: 120.0,
-      sellingPrice: 150.0,
-      margin: 20.0,
-      stock: 0,
-      status: "Out of Stock",
-      updated: "May 17, 2026 08:50 AM",
-      img: "☕",
-    },
-    {
-      name: "Aashirvaad Atta 5kg",
-      category: "Staples & Grains",
-      brand: "Aashirvaad",
-      sku: "AASH-ATTA-5KG",
-      barcode: "8901122305678",
-      buyingPrice: 245.0,
-      sellingPrice: 280.0,
-      margin: 12.5,
-      stock: 60,
-      status: "Low Stock",
-      updated: "May 16, 2026 07:20 PM",
-      img: "🥡",
-    },
-  ]);
+  if (products.length === 0) {
+    return (
+      <div className="space-y-6 font-sans px-6">
+        <PageHeader
+          title="Products Catalog"
+          icon={Package}
+        />
+        <Card className="p-12 text-center space-y-4 max-w-md mx-auto border border-sky-100 bg-white rounded-2xl shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
+            <Package className="w-6 h-6 animate-pulse" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-850 font-serif">No Products in Catalog</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+            Your store catalog is empty. Place a replenishment order in the <strong>Inventory</strong> panel to receive your first product delivery.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
+  const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+
+  // Dynamic metrics computations
+  const totalProducts = products.length;
+  const categoriesCount = new Set(products.map((p) => p.category)).size;
+  const totalInventoryValue = products.reduce((sum, p) => sum + (parseFloat(p.buyingPrice) || 0) * (parseInt(p.stock) || 0), 0);
+  const avgMargin = products.length > 0 ? products.reduce((sum, p) => sum + (parseFloat(p.margin) || 0), 0) / products.length : 0;
+  const lowStockCount = products.filter((p) => p.stock > 0 && p.stock < 20).length;
+  const outOfStockCount = products.filter((p) => p.stock === 0).length;
+  const discontinuedCount = 0;
 
   // Recently updated items list
   const updates = [
@@ -182,7 +147,7 @@ export default function ProductsView() {
     input.click();
   };
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     const name = prompt("Enter Product Name:", "Annapoorna Ghee 1L");
     if (!name) return;
     const category = prompt("Enter Category (Staples & Grains / Dairy & Bakery / Beverages / Snacks & Biscuits):", "Dairy & Bakery");
@@ -199,7 +164,7 @@ export default function ProductsView() {
       category,
       brand,
       sku,
-      barcode: Math.floor(1000000000000 + Math.random() * 9000000000000).toString(),
+      barcode: sku,
       buyingPrice,
       sellingPrice,
       margin,
@@ -208,6 +173,33 @@ export default function ProductsView() {
       updated: "Just Now",
       img: "📦"
     };
+
+    // Save product to database if dynamic store
+    if (activeStore) {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+      if (apiBase) {
+        try {
+          const response = await fetch(`${apiBase}/api/stores/${activeStore.id}/products`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sku: sku,
+              name: name,
+              category: category,
+              costPrice: buyingPrice,
+              sellingPrice: sellingPrice
+            })
+          });
+          if (!response.ok) {
+            console.error("Failed to add product to database.");
+          } else {
+            console.log("Product successfully saved to database!");
+          }
+        } catch (err) {
+          console.error("Connection failure adding product to DB:", err);
+        }
+      }
+    }
     
     setProducts((prev) => [newProduct, ...prev]);
   };
@@ -249,208 +241,242 @@ export default function ProductsView() {
       {/* Top Row - KPI Stats Cards (7 Columns) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
         {/* Total Products */}
-        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Total Products</span>
-            <Package className="w-3.5 h-3.5 text-blue-500" />
+            <Package className="w-3.5 h-3.5 text-blue-505" />
           </div>
-          <span className="text-base font-black text-slate-900 mt-1">4,250</span>
-          <span className="text-[8px] text-emerald-600 font-bold">↑ 12.5% vs last month</span>
+          <span className="text-base font-black text-slate-900 mt-1">{totalProducts}</span>
+          {isDemo ? (
+            <span className="text-[8px] text-emerald-600 font-bold">↑ 12.5% vs last month</span>
+          ) : (
+            <span className="text-[8px] text-slate-400 font-medium">Active Items</span>
+          )}
         </div>
 
         {/* Categories */}
-        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Categories</span>
-            <Layers className="w-3.5 h-3.5 text-blue-500" />
+            <Layers className="w-3.5 h-3.5 text-blue-505" />
           </div>
-          <span className="text-base font-black text-slate-900 mt-1">18</span>
-          <span className="text-[8px] text-emerald-600 font-bold">↑ 5.6% vs last month</span>
+          <span className="text-base font-black text-slate-900 mt-1">{categoriesCount}</span>
+          {isDemo ? (
+            <span className="text-[8px] text-emerald-600 font-bold">↑ 5.6% vs last month</span>
+          ) : (
+            <span className="text-[8px] text-slate-400 font-medium">Product Groups</span>
+          )}
         </div>
 
         {/* Inventory Value */}
-        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Inventory Value</span>
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-505" />
           </div>
-          <span className="text-base font-black text-slate-900 mt-1">₹1.84 Cr</span>
-          <span className="text-[8px] text-emerald-600 font-bold">↑ 18.3% vs last month</span>
+          <span className="text-base font-black text-slate-900 mt-1">
+            {totalInventoryValue > 10000000 
+              ? '₹' + (totalInventoryValue / 10000000).toFixed(2) + ' Cr' 
+              : '₹' + totalInventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </span>
+          {isDemo ? (
+            <span className="text-[8px] text-emerald-600 font-bold">↑ 18.3% vs last month</span>
+          ) : (
+            <span className="text-[8px] text-slate-400 font-medium">Total Cost Asset</span>
+          )}
         </div>
 
         {/* Average Margin */}
-        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Average Margin</span>
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-505" />
           </div>
-          <span className="text-base font-black text-slate-900 mt-1">21.6%</span>
-          <span className="text-[8px] text-emerald-600 font-bold">↑ 2.4% vs last month</span>
+          <span className="text-base font-black text-slate-900 mt-1">{avgMargin.toFixed(1)}%</span>
+          {isDemo ? (
+            <span className="text-[8px] text-emerald-600 font-bold">↑ 2.4% vs last month</span>
+          ) : (
+            <span className="text-[8px] text-slate-400 font-medium">Markup Yield</span>
+          )}
         </div>
 
         {/* Low Stock */}
-        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Low Stock</span>
             <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
           </div>
-          <span className="text-base font-black text-slate-900 mt-1">46</span>
-          <span className="text-[8px] text-rose-600 font-bold">↓ 8.7% vs last month</span>
+          <span className="text-base font-black text-slate-900 mt-1">{lowStockCount}</span>
+          {isDemo ? (
+            <span className="text-[8px] text-rose-600 font-bold">↓ 8.7% vs last month</span>
+          ) : (
+            <span className="text-[8px] text-slate-400 font-medium">Replenish Urgently</span>
+          )}
         </div>
 
         {/* Out of Stock */}
-        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Out of Stock</span>
             <XCircle className="w-3.5 h-3.5 text-rose-500" />
           </div>
-          <span className="text-base font-black text-slate-900 mt-1">28</span>
-          <span className="text-[8px] text-rose-600 font-bold">↑ 15.2% vs last month</span>
+          <span className="text-base font-black text-slate-900 mt-1">{outOfStockCount}</span>
+          {isDemo ? (
+            <span className="text-[8px] text-rose-600 font-bold">↑ 15.2% vs last month</span>
+          ) : (
+            <span className="text-[8px] text-slate-400 font-medium">Deficit Count</span>
+          )}
         </div>
 
         {/* Discontinued */}
-        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Discontinued</span>
             <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
           </div>
-          <span className="text-base font-black text-slate-900 mt-1">6</span>
-          <span className="text-[8px] text-rose-600 font-bold">↓ 25.0% vs last month</span>
+          <span className="text-base font-black text-slate-900 mt-1">{discontinuedCount}</span>
+          {isDemo ? (
+            <span className="text-[8px] text-rose-600 font-bold">↓ 25.0% vs last month</span>
+          ) : (
+            <span className="text-[8px] text-slate-400 font-medium">Inactive SKUs</span>
+          )}
         </div>
       </div>
 
-      {/* Row 3 - Mid Charts & Updates */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Category Share Donut */}
-        <Card className="space-y-4">
-          <div>
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif">
-              Products by Category
-            </h3>
-          </div>
-          <div className="flex items-center justify-between gap-3 text-[10px] text-slate-600 font-sans">
-            <svg width="70" height="70" viewBox="0 0 42 42" className="transform -rotate-90 shrink-0">
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#3b82f6" strokeWidth="6.5" strokeDasharray="38 62" strokeDashoffset="0" />
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#10b981" strokeWidth="6.5" strokeDasharray="20 80" strokeDashoffset="-38" />
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#f59e0b" strokeWidth="6.5" strokeDasharray="18 82" strokeDashoffset="-58" />
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#a78bfa" strokeWidth="6.5" strokeDasharray="14 86" strokeDashoffset="-76" />
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#e2e8f0" strokeWidth="6.5" strokeDasharray="10 90" strokeDashoffset="-90" />
-              <circle cx="21" cy="21" r="13" fill="#ffffff" />
-            </svg>
-            <div className="space-y-1 flex-1 font-semibold text-[10px]">
-              <div className="flex justify-between">
-                <span>Staples & Grains</span>
-                <span className="font-bold text-slate-800">38%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Dairy & Bakery</span>
-                <span className="font-bold text-slate-800">20%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Snacks & Drinks</span>
-                <span className="font-bold text-slate-800">18%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Household</span>
-                <span className="font-bold text-slate-800">14%</span>
-              </div>
+      {/* Row 3 - Mid Charts & Updates (Shown only on mock demo stores) */}
+      {isDemo && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Category Share Donut */}
+          <Card className="space-y-4">
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif">
+                Products by Category
+              </h3>
             </div>
-          </div>
-        </Card>
-
-        {/* Products Added Trend */}
-        <Card className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif">
-              Products Added Trend
-            </h3>
-            <span className="text-[9px] font-bold text-slate-400">Monthly</span>
-          </div>
-          <div className="h-28 flex items-end justify-between gap-1 text-[8px] text-slate-400 font-sans">
-            <div className="flex flex-col items-center flex-1">
-              <div className="w-3 bg-blue-500 rounded-t h-[40%]" />
-              <span className="mt-1">Dec</span>
-            </div>
-            <div className="flex flex-col items-center flex-1">
-              <div className="w-3 bg-blue-500 rounded-t h-[55%]" />
-              <span className="mt-1">Jan</span>
-            </div>
-            <div className="flex flex-col items-center flex-1">
-              <div className="w-3 bg-blue-500 rounded-t h-[65%]" />
-              <span className="mt-1">Feb</span>
-            </div>
-            <div className="flex flex-col items-center flex-1">
-              <div className="w-3 bg-blue-500 rounded-t h-[50%]" />
-              <span className="mt-1">Mar</span>
-            </div>
-            <div className="flex flex-col items-center flex-1">
-              <div className="w-3 bg-blue-500 rounded-t h-[80%]" />
-              <span className="mt-1">Apr</span>
-            </div>
-            <div className="flex flex-col items-center flex-1">
-              <div className="w-3 bg-blue-500 rounded-t h-[60%]" />
-              <span className="mt-1">May</span>
-            </div>
-          </div>
-        </Card>
-
-        {/* Margin Distribution */}
-        <Card className="space-y-4">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif">
-            Margin Distribution
-          </h3>
-          <div className="space-y-2 text-[10px] text-slate-600 font-sans">
-            <div className="space-y-0.5">
-              <div className="flex justify-between">
-                <span>30% and above</span>
-                <span className="font-bold text-slate-900">25% (1,062)</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
-                <div className="bg-blue-600 h-full rounded" style={{ width: "25%" }} />
-              </div>
-            </div>
-            <div className="space-y-0.5">
-              <div className="flex justify-between">
-                <span>20% - 30%</span>
-                <span className="font-bold text-slate-900">32% (1,360)</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
-                <div className="bg-blue-600 h-full rounded" style={{ width: "32%" }} />
-              </div>
-            </div>
-            <div className="space-y-0.5">
-              <div className="flex justify-between">
-                <span>10% - 20%</span>
-                <span className="font-bold text-slate-900">25% (1,062)</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
-                <div className="bg-blue-600 h-full rounded" style={{ width: "25%" }} />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Recently Updated */}
-        <Card className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif">
-              Recently Updated
-            </h3>
-            <span className="text-[9px] font-bold text-blue-600 cursor-pointer">View All</span>
-          </div>
-          <div className="space-y-2.5 font-sans text-xs">
-            {updates.map((up, idx) => (
-              <div key={idx} className="flex justify-between items-center text-slate-700">
-                <div>
-                  <span className="font-bold text-slate-900 block font-serif leading-tight">{up.name}</span>
-                  <span className="text-[9px] text-slate-450 uppercase">{up.desc}</span>
+            <div className="flex items-center justify-between gap-3 text-[10px] text-slate-600 font-sans">
+              <svg width="70" height="70" viewBox="0 0 42 42" className="transform -rotate-90 shrink-0">
+                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#3b82f6" strokeWidth="6.5" strokeDasharray="38 62" strokeDashoffset="0" />
+                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#10b981" strokeWidth="6.5" strokeDasharray="20 80" strokeDashoffset="-38" />
+                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#f59e0b" strokeWidth="6.5" strokeDasharray="18 82" strokeDashoffset="-58" />
+                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#a78bfa" strokeWidth="6.5" strokeDasharray="14 86" strokeDashoffset="-76" />
+                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#e2e8f0" strokeWidth="6.5" strokeDasharray="10 90" strokeDashoffset="-90" />
+                <circle cx="21" cy="21" r="13" fill="#ffffff" />
+              </svg>
+              <div className="space-y-1 flex-1 font-semibold text-[10px]">
+                <div className="flex justify-between">
+                  <span>Staples & Grains</span>
+                  <span className="font-bold text-slate-800">38%</span>
                 </div>
-                <span className="text-[9px] text-slate-400">{up.time}</span>
+                <div className="flex justify-between">
+                  <span>Dairy & Bakery</span>
+                  <span className="font-bold text-slate-800">20%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Snacks & Drinks</span>
+                  <span className="font-bold text-slate-800">18%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Household</span>
+                  <span className="font-bold text-slate-800">14%</span>
+                </div>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+            </div>
+          </Card>
+
+          {/* Products Added Trend */}
+          <Card className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif">
+                Products Added Trend
+              </h3>
+              <span className="text-[9px] font-bold text-slate-400">Monthly</span>
+            </div>
+            <div className="h-28 flex items-end justify-between gap-1 text-[8px] text-slate-400 font-sans">
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-3 bg-blue-500 rounded-t h-[40%]" />
+                <span className="mt-1">Dec</span>
+              </div>
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-3 bg-blue-500 rounded-t h-[55%]" />
+                <span className="mt-1">Jan</span>
+              </div>
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-3 bg-blue-500 rounded-t h-[65%]" />
+                <span className="mt-1">Feb</span>
+              </div>
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-3 bg-blue-500 rounded-t h-[50%]" />
+                <span className="mt-1">Mar</span>
+              </div>
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-3 bg-blue-500 rounded-t h-[80%]" />
+                <span className="mt-1">Apr</span>
+              </div>
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-3 bg-blue-500 rounded-t h-[60%]" />
+                <span className="mt-1">May</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Margin Distribution */}
+          <Card className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif">
+              Margin Distribution
+            </h3>
+            <div className="space-y-2 text-[10px] text-slate-600 font-sans">
+              <div className="space-y-0.5">
+                <div className="flex justify-between">
+                  <span>30% and above</span>
+                  <span className="font-bold text-slate-900">25% (1,062)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded" style={{ width: "25%" }} />
+                </div>
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex justify-between">
+                  <span>20% - 30%</span>
+                  <span className="font-bold text-slate-900">32% (1,360)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded" style={{ width: "32%" }} />
+                </div>
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex justify-between">
+                  <span>10% - 20%</span>
+                  <span className="font-bold text-slate-900">25% (1,062)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded" style={{ width: "25%" }} />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Recently Updated */}
+          <Card className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-serif">
+                Recently Updated
+              </h3>
+              <span className="text-[9px] font-bold text-blue-600 cursor-pointer">View All</span>
+            </div>
+            <div className="space-y-2.5 font-sans text-xs">
+              {updates.map((up, idx) => (
+                <div key={idx} className="flex justify-between items-center text-slate-700">
+                  <div>
+                    <span className="font-bold text-slate-900 block font-serif leading-tight">{up.name}</span>
+                    <span className="text-[9px] text-slate-450 uppercase">{up.desc}</span>
+                  </div>
+                  <span className="text-[9px] text-slate-400">{up.time}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Row 4 - Filtering & Search Bar */}
       <Card className="p-4 flex flex-col md:flex-row flex-wrap items-center gap-3 text-xs bg-white border border-sky-100">

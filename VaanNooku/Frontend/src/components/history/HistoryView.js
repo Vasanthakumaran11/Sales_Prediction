@@ -31,6 +31,26 @@ export default function HistoryView() {
   const avgMarginRate = 0.2285; // 22.85% margin
   const projectedProfit = totalNet * avgMarginRate;
 
+  if (!historyLogs || historyLogs.length === 0) {
+    return (
+      <div className="space-y-6 font-sans px-6">
+        <PageHeader
+          title="Historical Sales"
+          icon={History}
+        />
+        <Card className="p-12 text-center space-y-4 max-w-md mx-auto border border-sky-100 bg-white rounded-2xl shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
+            <History className="w-6 h-6 animate-pulse" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-850 font-serif">No Historical Sales Records</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+            This store is newly registered. Go to the <strong>Data Entry</strong> panel to add your first sales transaction log.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 font-sans px-6">
       <PageHeader

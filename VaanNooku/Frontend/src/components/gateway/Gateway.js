@@ -19,29 +19,46 @@ import {
   Info,
   ChevronLeft,
   Upload,
+  User,
+  Eye,
+  EyeOff,
+  ShieldCheck,
 } from "lucide-react";
+
 import { useStoreContext } from "@/context/StoreContext";
 import { STORE_PROFILES, CAPACITY_LIMITS, LOCATION_MULTIPLIERS, getColdStartFactor } from "@/lib/mock/stores";
 import { FESTIVALS } from "@/lib/mock/catalog";
-import { registerStore } from "@/lib/api/stores";
+import { registerStore, loginStore } from "@/lib/api/stores";
 import { ExecutiveGatewayView } from "./ExecutiveGatewayView";
 import { ShelfRecommendations } from "./ShelfRecommendations";
 import { PurchaseOrderConfirm } from "./PurchaseOrderConfirm";
+import Image from "next/image";
 
 export function Gateway() {
-  const { enterStore, enterExecutiveMode } = useStoreContext();
-
-  // gatewayState: 'landing', 'register', 'login', 'chain', 'insights'
-  const [gatewayState, setGatewayState] = useState("landing");
+  const { enterStore, enterExecutiveMode, gatewayState, setGatewayState } = useStoreContext();
 
   // Registration Form State
   const [formData, setFormData] = useState({
     storeName: "",
+    password: "",
     storeType: "Supermarket",
     locationType: "Urban",
     openingMonth: "October",
     investment: "850000",
   });
+
+  // Admin / Owner details collected at signup
+  const [adminDetails, setAdminDetails] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "Store Owner",
+    password: "",
+    confirmPassword: "",
+  });
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showAdminConfirm, setShowAdminConfirm] = useState(false);
+  const [adminError, setAdminError] = useState("");
 
   const [selectedProfileId, setSelectedProfileId] = useState(STORE_PROFILES[0].id);
 
@@ -102,9 +119,19 @@ export function Gateway() {
   };
 
   // Submit Credentials Login
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!loginCredentials.username.trim()) return;
+
+    try {
+      const response = await loginStore(loginCredentials);
+      if (response && response.store) {
+        enterStore(response.store);
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend login failed, falling back to local mock stores:", err);
+    }
 
     const searchName = loginCredentials.username.toLowerCase();
     const matched = STORE_PROFILES.find(
@@ -120,10 +147,24 @@ export function Gateway() {
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
     if (!formData.storeName.trim()) return;
-    
+    setAdminError("");
+
+    // Validate admin password match
+    if (adminDetails.password && adminDetails.password !== adminDetails.confirmPassword) {
+      setAdminError("Admin passwords do not match. Please re-enter.");
+      return;
+    }
+
+    // Merge admin password into store password if set
+    const mergedFormData = {
+      ...formData,
+      password: adminDetails.password || formData.password,
+    };
+
     // Suggest items based on capital investment
-    const initialRecs = getProductRecommendationsForInvestment(formData.investment);
+    const initialRecs = getProductRecommendationsForInvestment(mergedFormData.investment);
     setSelectedProducts(initialRecs);
+    setFormData(mergedFormData);
     setGatewayState("recommendations");
   };
 
@@ -183,15 +224,22 @@ export function Gateway() {
   const handleActivateStore = async () => {
     setShowPoSuccess(true);
     setTimeout(async () => {
-      const newStore = await registerStore(formData);
-      enterStore(newStore);
+      const payload = {
+        ...formData,
+        adminName: adminDetails.name,
+        adminEmail: adminDetails.email,
+        adminPhone: adminDetails.phone,
+        adminRole: adminDetails.role,
+      };
+      const newStore = await registerStore(payload);
+      enterStore(newStore, selectedProducts);
     }, 2500);
   };
 
   return (
     <div className="min-h-screen bg-sky-50 text-slate-800 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200 relative overflow-hidden">
       {/* Background Radial Glow */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-sky-100 via-sky-50 to-white pointer-events-none opacity-85" />
+      <div className="absolute inset-0 bg-linear-to-tr from-sky-100 via-sky-50 to-white pointer-events-none opacity-85" />
 
       {/* PO Success Banner Overlay */}
       {showPoSuccess && (
@@ -356,6 +404,21 @@ export function Gateway() {
                   />
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">Set Password</label>
+                  <input
+                    id="input-password"
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 font-sans"
+                    placeholder="Set store console login password"
+                    required
+                  />
+                </div>
+
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">Store Type</label>
@@ -364,7 +427,7 @@ export function Gateway() {
                       name="storeType"
                       value={formData.storeType}
                       onChange={handleInputChange}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-[right_1rem_center] bg-no-repeat font-sans"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-size-[10px_10px] bg-position-[right_1rem_center] bg-no-repeat font-sans"
                     >
                       <option value="Small">Small Store</option>
                       <option value="Medium">Medium Outlet</option>
@@ -381,7 +444,7 @@ export function Gateway() {
                       name="locationType"
                       value={formData.locationType}
                       onChange={handleInputChange}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-[right_1rem_center] bg-no-repeat font-sans"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-850 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-size-[10px_10px] bg-position-[right_1rem_center] bg-no-repeat font-sans"
                     >
                       <option value="Urban">Urban</option>
                       <option value="Semi-Urban">Semi-Urban</option>
@@ -415,7 +478,7 @@ export function Gateway() {
                       name="openingMonth"
                       value={formData.openingMonth}
                       onChange={handleInputChange}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-[right_1rem_center] bg-no-repeat font-sans"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-size-[10px_10px] bg-position-[right_1rem_center] bg-no-repeat font-sans"
                     >
                       <option value="January">January</option>
                       <option value="February">February</option>
@@ -433,10 +496,117 @@ export function Gateway() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Admin Details Section ── */}
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                  <ShieldCheck className="w-4 h-4 text-sky-600" />
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Admin Details</span>
+                  <span className="text-[9px] text-slate-400 ml-1 font-sans">(Profile shown in Settings)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">Full Name</label>
+                    <input
+                      id="admin-name"
+                      type="text"
+                      value={adminDetails.name}
+                      onChange={(e) => setAdminDetails(p => ({ ...p, name: e.target.value }))}
+                      placeholder="e.g. Vasanthakumaran"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 font-sans"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">Email Address</label>
+                    <input
+                      id="admin-email"
+                      type="email"
+                      value={adminDetails.email}
+                      onChange={(e) => setAdminDetails(p => ({ ...p, email: e.target.value }))}
+                      placeholder="admin@yourstore.com"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 font-sans"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">Phone Number</label>
+                    <input
+                      id="admin-phone"
+                      type="tel"
+                      value={adminDetails.phone}
+                      onChange={(e) => setAdminDetails(p => ({ ...p, phone: e.target.value }))}
+                      placeholder="+91 98765 43210"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 font-sans"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">Role</label>
+                    <select
+                      id="admin-role"
+                      value={adminDetails.role}
+                      onChange={(e) => setAdminDetails(p => ({ ...p, role: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 font-sans"
+                    >
+                      <option>Store Owner</option>
+                      <option>Store Manager</option>
+                      <option>Administrator</option>
+                      <option>Accountant</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">Password</label>
+                    <div className="relative">
+                      <input
+                        id="admin-password"
+                        type={showAdminPassword ? "text" : "password"}
+                        value={adminDetails.password}
+                        onChange={(e) => setAdminDetails(p => ({ ...p, password: e.target.value }))}
+                        placeholder="Set login password"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 font-sans"
+                      />
+                      <button type="button" onClick={() => setShowAdminPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        {showAdminPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block font-sans">Confirm Password</label>
+                    <div className="relative">
+                      <input
+                        id="admin-confirm-password"
+                        type={showAdminConfirm ? "text" : "password"}
+                        value={adminDetails.confirmPassword}
+                        onChange={(e) => setAdminDetails(p => ({ ...p, confirmPassword: e.target.value }))}
+                        placeholder="Re-enter password"
+                        className={`w-full bg-slate-50 border rounded-lg px-4 py-2.5 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:outline-none font-sans ${adminDetails.confirmPassword && adminDetails.password !== adminDetails.confirmPassword ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-sky-500"}`}
+                      />
+                      <button type="button" onClick={() => setShowAdminConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        {showAdminConfirm ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {adminError && (
+                  <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1 font-sans">
+                    <AlertTriangle className="w-3 h-3" /> {adminError}
+                  </p>
+                )}
+              </div>
             </div>
 
-          <div>
-            <img src="/Images/onboarding1.jpg" alt="" />
+          <div className="hidden md:block">
+            <Image
+              src="/Images/onboarding1.jpg"
+              alt="Onboarding Illustration"
+              width={500}
+              height={500}
+              className="rounded-2xl object-cover"
+              priority
+            />
           </div>
           </div>
 
@@ -445,7 +615,7 @@ export function Gateway() {
             <button
               id="btn-onboarding-next"
               type="submit"
-              className="bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition-all shadow-sm flex items-center gap-1.5"
+              className="bg-linear-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition-all shadow-sm flex items-center gap-1.5"
             >
               Next: Product Recommendations <ArrowRight className="w-3.5 h-3.5" />
             </button>
@@ -526,10 +696,21 @@ export function Gateway() {
           </div>
           <button
             type="submit"
-            className="w-full py-3.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg font-sans"
+            className="w-full py-3.5 bg-linear-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg font-sans"
           >
             Login <ArrowRight className="w-5 h-5" />
           </button>
+          
+          <div className="text-center text-xs font-semibold text-slate-500 font-sans">
+            Don't have credentials?{" "}
+            <button
+              type="button"
+              onClick={() => setGatewayState("register")}
+              className="text-sky-600 hover:text-sky-500 font-bold underline transition-colors"
+            >
+              Register your store
+            </button>
+          </div>
         </form>
       )}
 

@@ -7,11 +7,18 @@ class Store(Base):
 
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
+    password = Column(String, nullable=True)
     type = Column(String, default="Supermarket") # Small | Medium | Supermarket
     location = Column(String, default="Urban") # Urban | Semi-Urban | Rural
     investment = Column(Float, nullable=False)
     opening_month = Column(String, nullable=False)
     months_active = Column(Integer, default=12)
+
+    # Admin / Owner contact details
+    admin_name = Column(String, nullable=True)
+    admin_email = Column(String, nullable=True)
+    admin_phone = Column(String, nullable=True)
+    admin_role = Column(String, nullable=True, default="Store Owner")
 
     # Relationships
     stock_levels = relationship("StockLevel", back_populates="store", cascade="all, delete-orphan")

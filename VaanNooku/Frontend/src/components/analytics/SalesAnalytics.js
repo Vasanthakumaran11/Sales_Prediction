@@ -18,10 +18,43 @@ import {
 } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
+import { useStoreContext } from "@/context/StoreContext";
 
 export default function SalesAnalytics() {
+  const { historyLogs, activeStore } = useStoreContext();
   const [timeframe, setTimeframe] = useState("Monthly");
   const [dateRange, setDateRange] = useState("Jan 01, 2026 - May 17, 2026");
+
+  const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
+  const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+
+  // Dynamic calculations
+  const totalSales = historyLogs.reduce((sum, log) => sum + (parseFloat(log.net) || 0), 0);
+  const totalOrders = historyLogs.reduce((sum, log) => sum + (parseInt(log.transactions) || 0), 0);
+  const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+  const grossProfit = totalSales * 0.22;
+  const profitMargin = 22.8;
+  const returningCustomers = Math.round(totalOrders * 0.35);
+
+  if (!historyLogs || historyLogs.length === 0) {
+    return (
+      <div className="space-y-6 font-sans px-6">
+        <PageHeader
+          title="Sales Analytics"
+          icon={BarChart3}
+        />
+        <Card className="p-12 text-center space-y-4 max-w-md mx-auto border border-sky-100 bg-white rounded-2xl shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
+            <BarChart3 className="w-6 h-6 animate-pulse" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-850 font-serif">No Analytics Data</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+            There are no sales logs recorded for this store yet. Analytics charts will be generated once your transactions are received.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const handleDateRangeChange = () => {
     const ranges = [
@@ -129,75 +162,111 @@ export default function SalesAnalytics() {
       {/* KPI Stats Row (6 Columns) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
         {/* Total Sales */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-500 font-bold uppercase">Total Sales (₹)</span>
             <DollarSign className="w-4 h-4 text-blue-600" />
           </div>
-          <span className="text-base font-black text-slate-900 leading-none mt-1">₹8,45,230.50</span>
-          <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
-            ↑ 18.6% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+          <span className="text-base font-black text-slate-900 leading-none mt-1">
+            ₹{totalSales.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </span>
+          {isDemo ? (
+            <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
+              ↑ 18.6% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+            </span>
+          ) : (
+            <span className="text-[9px] text-slate-400 font-medium mt-1">Net Sales Volume</span>
+          )}
         </div>
 
         {/* Total Orders */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-500 font-bold uppercase">Total Orders</span>
             <ShoppingCart className="w-4 h-4 text-blue-600" />
           </div>
-          <span className="text-base font-black text-slate-900 leading-none mt-1">12,850</span>
-          <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
-            ↑ 15.7% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+          <span className="text-base font-black text-slate-900 leading-none mt-1">
+            {totalOrders.toLocaleString()}
           </span>
+          {isDemo ? (
+            <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
+              ↑ 15.7% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+            </span>
+          ) : (
+            <span className="text-[9px] text-slate-400 font-medium mt-1">Transactions count</span>
+          )}
         </div>
 
         {/* Average Order Value */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-500 font-bold uppercase">Average Order Value</span>
             <TrendingUp className="w-4 h-4 text-blue-600" />
           </div>
-          <span className="text-base font-black text-slate-900 leading-none mt-1">₹658.45</span>
-          <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
-            ↑ 8.3% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+          <span className="text-base font-black text-slate-900 leading-none mt-1">
+            ₹{avgOrderValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </span>
+          {isDemo ? (
+            <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
+              ↑ 8.3% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+            </span>
+          ) : (
+            <span className="text-[9px] text-slate-400 font-medium mt-1">Mean receipt size</span>
+          )}
         </div>
 
         {/* Gross Profit */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-500 font-bold uppercase">Gross Profit (₹)</span>
             <Award className="w-4 h-4 text-blue-600" />
           </div>
-          <span className="text-base font-black text-slate-900 leading-none mt-1">₹1,93,240.75</span>
-          <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
-            ↑ 21.4% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+          <span className="text-base font-black text-slate-900 leading-none mt-1">
+            ₹{grossProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </span>
+          {isDemo ? (
+            <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
+              ↑ 21.4% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+            </span>
+          ) : (
+            <span className="text-[9px] text-slate-400 font-medium mt-1">Estimated yield</span>
+          )}
         </div>
 
         {/* Profit Margin */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-500 font-bold uppercase">Profit Margin</span>
             <Percent className="w-4 h-4 text-blue-600" />
           </div>
-          <span className="text-base font-black text-slate-900 leading-none mt-1">22.85%</span>
-          <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
-            ↑ 2.6% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+          <span className="text-base font-black text-slate-900 leading-none mt-1">
+            {profitMargin}%
           </span>
+          {isDemo ? (
+            <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
+              ↑ 2.6% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+            </span>
+          ) : (
+            <span className="text-[9px] text-slate-400 font-medium mt-1">Percent markup margin</span>
+          )}
         </div>
 
         {/* Returning Customers */}
-        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-xl p-4 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-500 font-bold uppercase">Returning Customers</span>
             <Users className="w-4 h-4 text-blue-600" />
           </div>
-          <span className="text-base font-black text-slate-900 leading-none mt-1">4,235</span>
-          <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
-            ↑ 16.1% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+          <span className="text-base font-black text-slate-900 leading-none mt-1">
+            {returningCustomers.toLocaleString()}
           </span>
+          {isDemo ? (
+            <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-1">
+              ↑ 16.1% <span className="text-slate-400 font-normal">vs Dec 01 - Apr 30</span>
+            </span>
+          ) : (
+            <span className="text-[9px] text-slate-400 font-medium mt-1">Estimated repeat rate</span>
+          )}
         </div>
       </div>
 

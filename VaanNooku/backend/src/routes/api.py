@@ -78,8 +78,8 @@ def update_profile_settings(request: schemas.ProfileUpdateRequest):
     return settings.update_profile(request)
 
 @router.put("/users/password")
-def update_password_settings(request: schemas.PasswordUpdateRequest):
-    return settings.update_password(request)
+def update_password_settings(request: schemas.PasswordUpdateRequest, db: Session = Depends(get_db)):
+    return settings.update_password(db, request)
 
 @router.post("/stores/{store_id}/backup")
 def backup_system_configuration(store_id: str):
