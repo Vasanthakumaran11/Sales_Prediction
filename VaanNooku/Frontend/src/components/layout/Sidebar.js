@@ -97,7 +97,7 @@ export function Sidebar() {
 
       {/* Active Store Account Details - Sits anchored at the bottom */}
       <div className="mx-4 mb-4 p-3 bg-slate-50/50 border border-sky-100 rounded-xl flex items-center gap-3 shrink-0">
-        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm font-sans shrink-0 font-serif">
+        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm font-sans shrink-0">
           {initials}
         </div>
         <div className="flex-1 min-w-0">

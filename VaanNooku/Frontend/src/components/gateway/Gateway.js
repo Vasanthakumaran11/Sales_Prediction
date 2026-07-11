@@ -59,8 +59,9 @@ export function Gateway() {
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
   const [adminError, setAdminError] = useState("");
+  const [loginError, setLoginError] = useState("");
 
-  const [selectedProfileId, setSelectedProfileId] = useState(STORE_PROFILES[0].id);
+  const [selectedProfileId, setSelectedProfileId] = useState("");
 
   // Dynamic onboarding wizard states
   const [selectedProducts, setSelectedProducts] = useState([]);
@@ -72,13 +73,29 @@ export function Gateway() {
   const [showPoSuccess, setShowPoSuccess] = useState(false);
 
   const getProductRecommendationsForInvestment = (investment) => {
-    const amt = parseFloat(investment) || 150000;
+    const amt = parseFloat(investment) || 85000;
+    // 20 products from CSV dataset with their dataset properties and friendly categories
     return [
-      { id: 1, name: "Aashirvaad Chakki Atta 5kg", category: "Staples & Grains", buyingPrice: 245.0, sellingPrice: 280.0, qty: Math.max(10, Math.round(amt * 0.35 / 245)), checked: true },
-      { id: 2, name: "Amul Salted Butter 100g", category: "Dairy & Bakery", buyingPrice: 56.0, sellingPrice: 68.0, qty: Math.max(10, Math.round(amt * 0.15 / 56)), checked: true },
-      { id: 3, name: "Nescafe Gold 100g", category: "Beverages", buyingPrice: 240.0, sellingPrice: 320.0, qty: Math.max(10, Math.round(amt * 0.20 / 240)), checked: true },
-      { id: 4, name: "Haldiram’s Bhujia 400g", category: "Snacks & Biscuits", buyingPrice: 85.0, sellingPrice: 110.0, qty: Math.max(10, Math.round(amt * 0.20 / 85)), checked: true },
-      { id: 5, name: "Surf Excel Matic 1kg", category: "Personal Care", buyingPrice: 180.0, sellingPrice: 210.0, qty: Math.max(10, Math.round(amt * 0.10 / 180)), checked: true },
+      { itemId: "ITM01", name: "Milk", category: "Dairy & Bakery", buyingPrice: 24.49, sellingPrice: 29.86, qty: Math.max(10, Math.round((amt * 0.03) / 24.49)), checked: true },
+      { itemId: "ITM02", name: "Curd", category: "Dairy & Bakery", buyingPrice: 30.43, sellingPrice: 38.04, qty: Math.max(10, Math.round((amt * 0.03) / 30.43)), checked: true },
+      { itemId: "ITM03", name: "Paneer", category: "Dairy & Bakery", buyingPrice: 69.90, sellingPrice: 89.61, qty: Math.max(10, Math.round((amt * 0.04) / 69.90)), checked: true },
+      { itemId: "ITM04", name: "Bread", category: "Dairy & Bakery", buyingPrice: 35.26, sellingPrice: 43.53, qty: Math.max(10, Math.round((amt * 0.03) / 35.26)), checked: true },
+      { itemId: "ITM05", name: "Eggs", category: "Dairy & Bakery", buyingPrice: 63.30, sellingPrice: 76.27, qty: Math.max(10, Math.round((amt * 0.04) / 63.30)), checked: true },
+      { itemId: "ITM06", name: "Rice", category: "Staples & Grains", buyingPrice: 61.91, sellingPrice: 72.84, qty: Math.max(10, Math.round((amt * 0.08) / 61.91)), checked: true },
+      { itemId: "ITM07", name: "Wheat Flour", category: "Staples & Grains", buyingPrice: 41.28, sellingPrice: 48.56, qty: Math.max(10, Math.round((amt * 0.08) / 41.28)), checked: true },
+      { itemId: "ITM08", name: "Oil", category: "Staples & Grains", buyingPrice: 149.48, sellingPrice: 173.81, qty: Math.max(10, Math.round((amt * 0.10) / 149.48)), checked: true },
+      { itemId: "ITM09", name: "Sugar", category: "Staples & Grains", buyingPrice: 43.75, sellingPrice: 50.29, qty: Math.max(10, Math.round((amt * 0.06) / 43.75)), checked: true },
+      { itemId: "ITM10", name: "Salt", category: "Staples & Grains", buyingPrice: 18.82, sellingPrice: 23.52, qty: Math.max(10, Math.round((amt * 0.02) / 18.82)), checked: true },
+      { itemId: "ITM11", name: "Dal", category: "Staples & Grains", buyingPrice: 128.15, sellingPrice: 152.56, qty: Math.max(10, Math.round((amt * 0.08) / 128.15)), checked: true },
+      { itemId: "ITM12", name: "Spices Mix", category: "Staples & Grains", buyingPrice: 65.15, sellingPrice: 90.48, qty: Math.max(10, Math.round((amt * 0.04) / 65.15)), checked: true },
+      { itemId: "ITM13", name: "Biscuits", category: "Snacks & Biscuits", buyingPrice: 8.13, sellingPrice: 10.84, qty: Math.max(10, Math.round((amt * 0.06) / 8.13)), checked: true },
+      { itemId: "ITM14", name: "Chips", category: "Snacks & Biscuits", buyingPrice: 15.16, sellingPrice: 20.77, qty: Math.max(10, Math.round((amt * 0.05) / 15.16)), checked: true },
+      { itemId: "ITM15", name: "Namkeen", category: "Snacks & Biscuits", buyingPrice: 19.74, sellingPrice: 25.98, qty: Math.max(10, Math.round((amt * 0.05) / 19.74)), checked: true },
+      { itemId: "ITM16", name: "Chocolate", category: "Snacks & Biscuits", buyingPrice: 30.24, sellingPrice: 43.20, qty: Math.max(10, Math.round((amt * 0.04) / 30.24)), checked: true },
+      { itemId: "ITM17", name: "Tea", category: "Beverages", buyingPrice: 97.02, sellingPrice: 124.38, qty: Math.max(10, Math.round((amt * 0.05) / 97.02)), checked: true },
+      { itemId: "ITM18", name: "Coffee", category: "Beverages", buyingPrice: 119.90, sellingPrice: 159.86, qty: Math.max(10, Math.round((amt * 0.05) / 119.90)), checked: true },
+      { itemId: "ITM19", name: "Juice", category: "Beverages", buyingPrice: 52.20, sellingPrice: 65.25, qty: Math.max(10, Math.round((amt * 0.04) / 52.20)), checked: true },
+      { itemId: "ITM20", name: "Soft Drinks", category: "Beverages", buyingPrice: 33.96, sellingPrice: 41.42, qty: Math.max(10, Math.round((amt * 0.03) / 33.96)), checked: true },
     ];
   };
 
@@ -90,10 +107,10 @@ export function Gateway() {
       const file = e.target.files[0];
       if (file) {
         setSelectedProducts([
-          { id: 201, name: "Premium Kolam Rice 10kg", category: "Staples & Grains", buyingPrice: 580.0, sellingPrice: 650.0, qty: 100, checked: true },
-          { id: 202, name: "Madhur Pure Sugar 5kg", category: "Staples & Grains", buyingPrice: 210.0, sellingPrice: 240.0, qty: 150, checked: true },
-          { id: 203, name: "Britannia Marie Gold 250g", category: "Snacks & Biscuits", buyingPrice: 30.0, sellingPrice: 35.0, qty: 500, checked: true },
-          { id: 204, name: "Amul Pure Ghee 1L", category: "Dairy & Bakery", buyingPrice: 610.0, sellingPrice: 650.0, qty: 60, checked: true },
+          { itemId: "ITM06", name: "Rice", category: "Staples & Grains", buyingPrice: 61.91, sellingPrice: 72.84, qty: 100, checked: true },
+          { itemId: "ITM09", name: "Sugar", category: "Staples & Grains", buyingPrice: 43.75, sellingPrice: 50.29, qty: 150, checked: true },
+          { itemId: "ITM13", name: "Biscuits", category: "Snacks & Biscuits", buyingPrice: 8.13, sellingPrice: 10.84, qty: 500, checked: true },
+          { itemId: "ITM01", name: "Milk", category: "Dairy & Bakery", buyingPrice: 24.49, sellingPrice: 29.86, qty: 60, checked: true },
         ]);
         alert(`Successfully parsed custom purchase plan from file: ${file.name}. Loaded 4 custom products into your purchase order.`);
       }
@@ -118,29 +135,27 @@ export function Gateway() {
     setLoginCredentials((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Submit Credentials Login
+  // Submit Credentials Login - STRICT AUTH ONLY, NO MOCK FALLBACKS
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    if (!loginCredentials.username.trim()) return;
+    setLoginError("");
+    if (!loginCredentials.username.trim() || !loginCredentials.password.trim()) {
+      setLoginError("Please enter both username and password.");
+      return;
+    }
 
     try {
       const response = await loginStore(loginCredentials);
       if (response && response.store) {
         enterStore(response.store);
         return;
+      } else {
+        setLoginError("Invalid username or password. Check database records.");
       }
     } catch (err) {
-      console.warn("Backend login failed, falling back to local mock stores:", err);
+      console.error("Backend authentication failure:", err);
+      setLoginError("Authentication failure. Ensure the database backend is online.");
     }
-
-    const searchName = loginCredentials.username.toLowerCase();
-    const matched = STORE_PROFILES.find(
-      (p) =>
-        p.name.toLowerCase().includes(searchName) ||
-        p.id.toLowerCase().includes(searchName)
-    ) || STORE_PROFILES[0];
-
-    enterStore(matched);
   };
 
   // Submit New Store (Step 1)
@@ -319,18 +334,6 @@ export function Gateway() {
               <div className="flex items-center gap-1.5 text-xs font-bold text-sky-600 pt-2 mt-auto">
                 Start Onboarding <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
-            </button>
-          </div>
-
-          {/* Executive Link Footer */}
-          <div className="flex justify-center border-t border-slate-100 pt-6">
-            <button
-              id="landing-btn-chain"
-              onClick={() => setGatewayState("chain")}
-              className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-sky-600 transition-colors"
-            >
-              <Layers className="w-4 h-4 text-sky-500" />
-              <span>Multi-Store Executive Control Mode</span>
             </button>
           </div>
         </div>
@@ -694,6 +697,12 @@ export function Gateway() {
               />
             </div>
           </div>
+
+          {loginError && (
+            <p className="text-[11px] text-rose-500 font-bold bg-rose-50 border border-rose-100 rounded-xl px-4 py-2 flex items-center gap-1.5 font-sans">
+              ✕ {loginError}
+            </p>
+          )}
           <button
             type="submit"
             className="w-full py-3.5 bg-linear-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg font-sans"

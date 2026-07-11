@@ -1,62 +1,47 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Users, ShieldCheck, Mail, Phone } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
+import { useStoreContext } from "@/context/StoreContext";
+
+const DEFAULT_SUPPLIERS = [];
 
 export default function SuppliersView() {
-  const suppliers = [
-    {
-      name: "Balaji Agro Distributors",
-      category: "Staples & Grains",
-      contact: "Mukesh Patel",
-      phone: "+91 98450 12345",
-      email: "procurement@balajiagro.com",
-      leadTime: "2 Days",
-      discount: "15% Bulk Contract",
-      status: "Verified Partner",
-    },
-    {
-      name: "Shiva Dairy & Farms",
-      category: "Perishables & Cold Storage",
-      contact: "Aravind Swamy",
-      phone: "+91 99120 54321",
-      email: "supply@shivafarms.in",
-      leadTime: "1 Day (Same-Day Express)",
-      discount: "10% Standard Rate",
-      status: "Active Vendor",
-    },
-    {
-      name: "Surya Packaged Goods Ltd",
-      category: "Snacks, Beverages & Care",
-      contact: "K. R. Nair",
-      phone: "+91 88770 98765",
-      email: "nair@suryapackaged.com",
-      leadTime: "3 Days",
-      discount: "12% Volume Scaling",
-      status: "Verified Partner",
-    },
-    {
-      name: "Krishna Beverages Co.",
-      category: "Beverages & Drinks",
-      contact: "Amit Sharma",
-      phone: "+91 97654 32109",
-      email: "sales@krishnabev.in",
-      leadTime: "2 Days",
-      discount: "8% Standard Contract",
-      status: "Active Vendor",
-    },
-    {
-      name: "Durga Household Essentials",
-      category: "Household & Personal Care",
-      contact: "Priya Das",
-      phone: "+91 81234 56789",
-      email: "priya@durgaessentials.com",
-      leadTime: "4 Days",
-      discount: "14% Bulk Volume Rate",
-      status: "Verified Partner",
-    },
-  ];
+  const { activeStore } = useStoreContext();
+  const [apiSuppliers, setApiSuppliers] = useState(null);
+
+  useEffect(() => {
+    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
+    const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+    
+    if (!isDemo) {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+      if (apiBase) {
+        fetch(`${apiBase}/api/suppliers/suggestions`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) {
+              setApiSuppliers(data.map(s => ({
+                name: s.name,
+                category: s.category || "General Wholesaler",
+                email: s.email || "contact@wholesaler.com",
+                phone: s.phone || "+91 99999 88888",
+                leadTime: `${s.lead_time_days || 2} Days`,
+                discount: `${s.min_order_qty || 10} Units Min Order`,
+                status: "Verified Supplier"
+              })));
+            }
+          })
+          .catch((err) => {
+            console.error("Error fetching suppliers:", err);
+          });
+      }
+    }
+  }, [activeStore]);
+
+  // Derive suppliers list dynamically to prevent cascading render warnings
+  const suppliers = apiSuppliers || DEFAULT_SUPPLIERS;
 
   return (
     <div className="space-y-6 font-sans px-6 ">

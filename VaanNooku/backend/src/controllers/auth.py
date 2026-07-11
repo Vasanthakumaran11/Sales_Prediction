@@ -6,8 +6,9 @@ from src.schemas import schemas
 def login_store(db: Session, request: schemas.LoginRequest):
     # Find store matching username/name
     store = db.query(models.Store).filter(
-        (models.Store.name == request.username) | 
-        (models.Store.id == request.username.lower().replace(" ", "-"))
+        (models.Store.name.ilike(request.username)) | 
+        (models.Store.id.ilike(request.username)) |
+        (models.Store.id.ilike(request.username.replace(" ", "-")))
     ).first()
 
     if not store:
@@ -94,11 +95,22 @@ def register_store(db: Session, request: schemas.StoreRegisterRequest):
     # Ingest catalog products dynamically if provided
     if request.productsList:
         for p in request.productsList:
-            prod_id = p.name.lower().strip().replace(" ", "-").replace("/", "-")
+            prod_id = p.itemId if p.itemId else p.name.lower().strip().replace(" ", "-").replace("/", "-")
             
             # Map cost and price
             cost = p.buyingPrice or p.cost_price or 10.0
             price = p.sellingPrice or p.price or 12.0
+            
+            # Map supplier ID
+            p_sup_id = supplier_id
+            if p.itemId:
+                # Find appropriate supplier based on product ID mapping from dataset
+                if p.itemId in ["ITM01", "ITM02", "ITM03", "ITM04", "ITM05"]:
+                    p_sup_id = "SUP_FRESH"
+                elif p.itemId in ["ITM06", "ITM07", "ITM08", "ITM09", "ITM10", "ITM11", "ITM17", "ITM18"]:
+                    p_sup_id = "SUP_STAPLE"
+                else:
+                    p_sup_id = "SUP_PACKAGED"
             
             # Insert product to general catalog if not exists
             prod_exists = db.query(models.Product).filter(models.Product.id == prod_id).first()
@@ -110,20 +122,29 @@ def register_store(db: Session, request: schemas.StoreRegisterRequest):
                     category=p.category or "General",
                     cost_price=cost,
                     selling_price=price,
-                    supplier_id=supplier_id
+                    supplier_id=p_sup_id
                 )
                 db.add(new_prod)
                 db.commit()
 
             # Map stock level
-            new_stock = models.StockLevel(
-                store_id=store_id,
-                product_id=prod_id,
-                current_stock=p.qty,
-                safety_stock=15,
-                reorder_point=30
-            )
-            db.add(new_stock)
+            # If stock level exists for this store/product, update it. Otherwise create it.
+            existing_stock = db.query(models.StockLevel).filter(
+                models.StockLevel.store_id == store_id,
+                models.StockLevel.product_id == prod_id
+            ).first()
+            
+            if existing_stock:
+                existing_stock.current_stock = p.qty
+            else:
+                new_stock = models.StockLevel(
+                    store_id=store_id,
+                    product_id=prod_id,
+                    current_stock=p.qty,
+                    safety_stock=15,
+                    reorder_point=30
+                )
+                db.add(new_stock)
             db.commit()
 
     return {

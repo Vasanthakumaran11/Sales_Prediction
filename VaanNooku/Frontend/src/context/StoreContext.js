@@ -4,79 +4,6 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback } 
 
 const StoreContext = createContext(null);
 
-const DEMO_PRODUCTS = [
-  {
-    name: "Amul Taaza Milk 1L",
-    category: "Dairy & Bakery",
-    brand: "Amul",
-    sku: "AMUL-MILK-1L",
-    barcode: "8901262150001",
-    buyingPrice: 56.0,
-    sellingPrice: 68.0,
-    margin: 17.6,
-    stock: 245,
-    status: "Healthy",
-    updated: "May 17, 2026 10:30 AM",
-    img: "🥛",
-  },
-  {
-    name: "India Gate Basmati Rice 1kg",
-    category: "Staples & Grains",
-    brand: "India Gate",
-    sku: "IG-RICE-1KG",
-    barcode: "8901122334455",
-    buyingPrice: 82.0,
-    sellingPrice: 105.0,
-    margin: 21.9,
-    stock: 120,
-    status: "Low Stock",
-    updated: "May 17, 2026 09:45 AM",
-    img: "🌾",
-  },
-  {
-    name: "Fortune Sunflower Oil 1L",
-    category: "Staples & Grains",
-    brand: "Fortune",
-    sku: "FORT-OIL-1L",
-    barcode: "8901030740012",
-    buyingPrice: 135.0,
-    sellingPrice: 160.0,
-    margin: 15.6,
-    stock: 35,
-    status: "Low Stock",
-    updated: "May 17, 2026 1 Hour AM",
-    img: "🌻",
-  },
-  {
-    name: "Tata Tea Premium 250g",
-    category: "Beverages",
-    brand: "Tata Tea",
-    sku: "TATA-TEA-250",
-    barcode: "8901030712345",
-    buyingPrice: 120.0,
-    sellingPrice: 150.0,
-    margin: 20.0,
-    stock: 0,
-    status: "Out of Stock",
-    updated: "May 17, 2026 08:50 AM",
-    img: "☕",
-  },
-  {
-    name: "Aashirvaad Atta 5kg",
-    category: "Staples & Grains",
-    brand: "Aashirvaad",
-    sku: "AASH-ATTA-5KG",
-    barcode: "8901122305678",
-    buyingPrice: 245.0,
-    sellingPrice: 280.0,
-    margin: 12.5,
-    stock: 60,
-    status: "Low Stock",
-    updated: "May 16, 2026 07:20 PM",
-    img: "🥡",
-  },
-];
-
 export function StoreProvider({ children }) {
   const [theme, setTheme] = useState("light");
   const [stage, setStage] = useState("gateway"); // 'gateway' | 'active'
@@ -84,16 +11,8 @@ export function StoreProvider({ children }) {
   const [activeStore, setActiveStore] = useState(null); // null => executive multi-store mode
   const [isExecutiveMode, setIsExecutiveMode] = useState(false);
   const [activeView, setActiveView] = useState("overview");
-  const [storeProducts, setStoreProducts] = useState(DEMO_PRODUCTS);
-  const [historyLogs, setHistoryLogs] = useState([
-    { date: "May 17, 2026", transactions: 1320, gross: 24567.70, discount: 1122.20, net: 23445.50, checked: true },
-    { date: "May 16, 2026", transactions: 1285, gross: 22890.00, discount: 890.00, net: 22000.00, checked: true },
-    { date: "May 15, 2026", transactions: 1410, gross: 27120.00, discount: 1540.00, net: 25580.00, checked: false },
-    { date: "May 14, 2026", transactions: 1150, gross: 19850.50, discount: 450.50, net: 19400.00, checked: false },
-    { date: "May 13, 2026", transactions: 1290, gross: 23410.00, discount: 1010.00, net: 22400.00, checked: false },
-    { date: "May 12, 2026", transactions: 1380, gross: 26180.00, discount: 1200.00, net: 24980.00, checked: false },
-    { date: "May 11, 2026", transactions: 1210, gross: 21050.00, discount: 850.00, net: 20200.00, checked: false },
-  ]);
+  const [storeProducts, setStoreProducts] = useState([]);
+  const [historyLogs, setHistoryLogs] = useState([]);
 
   // Read URL on mount to restore page state
   useEffect(() => {
@@ -174,11 +93,10 @@ export function StoreProvider({ children }) {
     setActiveView("data-entry");
     setStage("active");
 
-    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
-    if (store && !demoIds.includes(store.id)) {
-      setHistoryLogs([]);
-      setStoreProducts([]);
+    setHistoryLogs([]);
+    setStoreProducts([]);
 
+    if (store) {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
       if (apiBase) {
         // Fetch daily logs dynamically
@@ -207,6 +125,7 @@ export function StoreProvider({ children }) {
             if (Array.isArray(data)) {
               setStoreProducts(
                 data.map((p) => ({
+                  id: p.id,
                   name: p.name,
                   category: p.category,
                   brand: p.brand || p.name.split(" ")[0] || "Generic",
@@ -227,6 +146,7 @@ export function StoreProvider({ children }) {
       } else if (initialProducts) {
         setStoreProducts(
           initialProducts.map((p) => ({
+            id: p.itemId,
             name: p.name,
             category: p.category,
             brand: p.name.split(" ")[0] || "Generic",
@@ -242,17 +162,6 @@ export function StoreProvider({ children }) {
           }))
         );
       }
-    } else {
-      setStoreProducts(DEMO_PRODUCTS);
-      setHistoryLogs([
-        { date: "May 17, 2026", transactions: 1320, gross: 24567.70, discount: 1122.20, net: 23445.50, checked: true },
-        { date: "May 16, 2026", transactions: 1285, gross: 22890.00, discount: 890.00, net: 22000.00, checked: true },
-        { date: "May 15, 2026", transactions: 1410, gross: 27120.00, discount: 1540.00, net: 25580.00, checked: false },
-        { date: "May 14, 2026", transactions: 1150, gross: 19850.50, discount: 450.50, net: 19400.00, checked: false },
-        { date: "May 13, 2026", transactions: 1290, gross: 23410.00, discount: 1010.00, net: 22400.00, checked: false },
-        { date: "May 12, 2026", transactions: 1380, gross: 26180.00, discount: 1200.00, net: 24980.00, checked: false },
-        { date: "May 11, 2026", transactions: 1210, gross: 21050.00, discount: 850.00, net: 20200.00, checked: false },
-      ]);
     }
   }, []);
 

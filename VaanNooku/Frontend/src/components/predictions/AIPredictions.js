@@ -5,64 +5,50 @@ import { Sparkles, Package, HelpCircle, ArrowRight, TrendingUp, DollarSign, BarC
 import { PageHeader, Card } from "@/components/ui/Card";
 import { useStoreContext } from "@/context/StoreContext";
 
-const DEFAULT_CATEGORIES = [
-  {
-    id: "staples",
-    name: "Staples & Grains",
-    itemCount: 4,
-    totalStock: 380,
-    color: "bg-sky-50 border-sky-200 text-sky-700",
-    products: [
-      { name: "India Gate Basmati Rice 1kg", sku: "IG-RICE-1KG", stock: 120 },
-      { name: "Aashirvaad Atta 5kg", sku: "AASH-ATTA-5KG", stock: 60 },
-      { name: "Sugar Premium 1kg", sku: "SUG-1KG", stock: 150 },
-      { name: "Moong Dal 1kg", sku: "DAL-MOONG-1", stock: 50 },
-    ],
-  },
-  {
-    id: "dairy",
-    name: "Dairy & Bakery",
-    itemCount: 3,
-    totalStock: 395,
-    color: "bg-blue-50 border-blue-200 text-blue-700",
-    products: [
-      { name: "Amul Taaza Milk 1L", sku: "AMUL-MILK-1L", stock: 245 },
-      { name: "Amul Salted Butter 100g", sku: "AMUL-BUTTER-100", stock: 90 },
-      { name: "Britannia Bread Family Pack", sku: "BRIT-BREAD-F", stock: 60 },
-    ],
-  },
-  {
-    id: "beverages",
-    name: "Beverages",
-    itemCount: 3,
-    totalStock: 150,
-    color: "bg-teal-50 border-teal-200 text-teal-700",
-    products: [
-      { name: "Tata Tea Premium 250g", sku: "TATA-TEA-250", stock: 0 },
-      { name: "Nescafe Gold 100g", sku: "NES-GOLD-100", stock: 45 },
-      { name: "Coca Cola 1.25L", sku: "COKE-1.25L", stock: 105 },
-    ],
-  },
-  {
-    id: "household",
-    name: "Household Essentials",
-    itemCount: 2,
-    totalStock: 110,
-    color: "bg-indigo-50 border-indigo-200 text-indigo-700",
-    products: [
-      { name: "Surf Excel Matic 1kg", sku: "SURF-1KG", stock: 35 },
-      { name: "Vim Liquid Soap 500ml", sku: "VIM-500ML", stock: 75 },
-    ],
-  },
-];
+// Helper to compute category stock levels dynamically from active storeProducts list
+const getDynamicCategories = (products) => {
+  const catMap = {};
+  (products || []).forEach(p => {
+    const cat = p.category || "General";
+    if (!catMap[cat]) {
+      catMap[cat] = { itemCount: 0, totalStock: 0, products: [] };
+    }
+    catMap[cat].itemCount += 1;
+    catMap[cat].totalStock += (p.stock || 0);
+    catMap[cat].products.push(p);
+  });
+  
+  const colors = [
+    "bg-sky-50 border-sky-200 text-sky-700",
+    "bg-blue-50 border-blue-200 text-blue-700",
+    "bg-teal-50 border-teal-200 text-teal-700",
+    "bg-indigo-50 border-indigo-200 text-indigo-700"
+  ];
+  
+  return Object.entries(catMap).map(([name, val], idx) => ({
+    id: name.toLowerCase().replace(" ", "-").replace("&", "and"),
+    name,
+    itemCount: val.itemCount,
+    totalStock: val.totalStock,
+    color: colors[idx % colors.length],
+    products: val.products
+  }));
+};
 
 export default function AIPredictions() {
   const { historyLogs, activeStore, storeProducts } = useStoreContext();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [predicting, setPredicting] = useState(false);
   const [showPredictions, setShowPredictions] = useState(false);
-  const [categories, setCategories] = useState([]);
+  const [apiCategories, setApiCategories] = useState(null);
   const [forecastData, setForecastData] = useState(null);
+  const [predictionError, setPredictionError] = useState("");
+
+  // Individual item ML prediction state
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productForecast, setProductForecast] = useState(null);
+  const [loadingProductForecast, setLoadingProductForecast] = useState(false);
+  const [productForecastError, setProductForecastError] = useState("");
 
   useEffect(() => {
     const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
@@ -73,57 +59,98 @@ export default function AIPredictions() {
         fetch(`${apiBase}/api/stores/${activeStore.id}/predictions/stock-summary`)
           .then((res) => res.json())
           .then((data) => {
-            if (Array.isArray(data)) {
-              const mapped = data.map((c, idx) => {
-                const colors = [
-                  "bg-sky-50 border-sky-200 text-sky-700",
-                  "bg-blue-50 border-blue-200 text-blue-700",
-                  "bg-teal-50 border-teal-200 text-teal-700",
-                  "bg-indigo-50 border-indigo-200 text-indigo-700"
-                ];
-                return {
-                  id: c.category.toLowerCase().replace(" ", "-"),
-                  name: c.category,
-                  itemCount: c.skuCount,
-                  totalStock: c.totalStock,
-                  color: colors[idx % colors.length],
-                  products: []
-                };
-              });
-              setCategories(mapped);
+            if (Array.isArray(data) && data.length > 0) {
+              const colors = [
+                "bg-sky-50 border-sky-200 text-sky-700",
+                "bg-blue-50 border-blue-200 text-blue-700",
+                "bg-teal-50 border-teal-200 text-teal-700",
+                "bg-indigo-50 border-indigo-200 text-indigo-700"
+              ];
+              const mapped = data.map((c, idx) => ({
+                id: c.category.toLowerCase().replace(" ", "-"),
+                name: c.category,
+                itemCount: c.skuCount,
+                totalStock: c.totalStock,
+                color: colors[idx % colors.length],
+                products: []
+              }));
+              setApiCategories(mapped);
             }
           })
-          .catch((err) => console.error("Error fetching stock summary predictions:", err));
+          .catch((err) => {
+            console.error("Error fetching stock summary predictions:", err);
+          });
       }
-    } else {
-      setCategories(DEFAULT_CATEGORIES);
     }
   }, [activeStore]);
 
+  // Derive categories list dynamically to prevent cascading render warnings
+  const categories = apiCategories || getDynamicCategories(storeProducts);
+
   const handleCategoryClick = (cat) => {
-    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
-    const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
-    if (isDemo) {
-      setSelectedCategory(cat);
+    const catProducts = (storeProducts || []).filter(p => p.category === cat.name).map(p => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      stock: p.stock
+    }));
+    setSelectedCategory({
+      ...cat,
+      products: catProducts.length > 0 ? catProducts : [{ name: "No products registered in category", id: "N/A", sku: "N/A", stock: 0 }]
+    });
+  };
+
+  const handleProductForecast = async (product) => {
+    if (!product || product.id === "N/A") return;
+    setSelectedProduct(product);
+    setProductForecast(null);
+    setProductForecastError("");
+    setLoadingProductForecast(true);
+
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    if (apiBase && activeStore) {
+      try {
+        const response = await fetch(`${apiBase}/api/predictions/next-month/${activeStore.id}/${product.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setProductForecast(data);
+        } else {
+          const errData = await response.json();
+          setProductForecastError(errData.detail || "Unable to load forecast.");
+        }
+      } catch (err) {
+        console.error("Connection failure fetching item forecast:", err);
+        setProductForecastError("Server connection failure. Ensure backend is running.");
+      }
     } else {
-      const catProducts = (storeProducts || []).filter(p => p.category === cat.name).map(p => ({
-        name: p.name,
-        sku: p.sku,
-        stock: p.stock
-      }));
-      setSelectedCategory({
-        ...cat,
-        products: catProducts.length > 0 ? catProducts : [{ name: "No products registered in category", sku: "N/A", stock: 0 }]
+      // Mock forecast for demo/fallback
+      setProductForecast({
+        store_id: activeStore?.id || "STORE_DEMO",
+        item_id: product.id || "ITM_DEMO",
+        monthly_total_units: 720,
+        monthly_revenue: 21500.50,
+        avg_daily_units: 24,
+        business_metrics: {
+          risk_level: "LOW",
+          safety_stock: 45,
+          reorder_point: 120,
+          economic_order_quantity: 350,
+          recommended_order_qty: 0
+        },
+        daily_forecast: Array.from({ length: 30 }, (_, i) => ({
+          date: `2026-06-${(i + 1).toString().padStart(2, "0")}`,
+          predicted_units: Math.round(20 + Math.sin(i / 2) * 5 + Math.random() * 3)
+        }))
       });
     }
+    setLoadingProductForecast(false);
   };
 
   const handlePredict = async () => {
     setPredicting(true);
-    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
-    const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+    setPredictionError("");
     
-    if (!isDemo && activeStore) {
+    if (activeStore) {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
       if (apiBase) {
         try {
@@ -136,26 +163,15 @@ export default function AIPredictions() {
             setShowPredictions(true);
           } else {
             console.error("Prediction forecast endpoint error.");
+            setPredictionError("Prediction generation failed. Ensure your transaction logs are fully synced.");
           }
         } catch (err) {
           console.error("Connection failure fetching demand predictions:", err);
+          setPredictionError("Failed to connect to forecast service. Backend is currently offline.");
         }
+      } else {
+        setPredictionError("Forecast service endpoint is not configured.");
       }
-    } else {
-      setForecastData({
-        summary: {
-          projectedRevenue: 945230,
-          projectedUnitsDemand: 5842,
-          confidenceMetricR2: 0.948
-        },
-        weeklyBreakdown: [
-          { week: "Week 1", projectedSales: 207950 },
-          { week: "Week 2", projectedSales: 236300 },
-          { week: "Week 3", projectedSales: 245760 },
-          { week: "Week 4", projectedSales: 255220 }
-        ]
-      });
-      setShowPredictions(true);
     }
     setPredicting(false);
   };
@@ -235,25 +251,198 @@ export default function AIPredictions() {
 
             <div className="py-4 space-y-2.5 max-h-60 overflow-y-auto">
               {selectedCategory.products.map((p, idx) => (
-                <div key={idx} className="flex justify-between items-center text-xs py-1 border-b border-slate-50 last:border-b-0">
+                <div key={idx} className="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-b-0">
                   <div>
                     <span className="font-semibold text-slate-800 block">{p.name}</span>
                     <span className="text-[9px] text-slate-450 uppercase">{p.sku}</span>
                   </div>
-                  <span
-                    className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                      p.stock === 0
-                        ? "bg-rose-50 text-rose-600"
-                        : p.stock < 50
-                        ? "bg-amber-50 text-amber-600"
-                        : "bg-sky-50 text-sky-600"
-                    }`}
-                  >
-                    {p.stock} Units
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                        p.stock === 0
+                          ? "bg-rose-50 text-rose-600"
+                          : p.stock < 50
+                          ? "bg-amber-50 text-amber-600"
+                          : "bg-sky-50 text-sky-600"
+                      }`}
+                    >
+                      {p.stock} Units
+                    </span>
+                    {p.id && p.id !== "N/A" && (
+                      <button
+                        onClick={() => handleProductForecast(p)}
+                        className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold rounded-lg text-[9px] transition-all shadow-xs"
+                      >
+                        ML Forecast
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Secondary Modal: Detailed ML Forecast for Selected Product */}
+      {selectedProduct && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-sky-100 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden animate-fade-in font-sans flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center shrink-0">
+              <div>
+                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest block">Machine Learning Ensemble Projections</span>
+                <h3 className="text-lg font-bold text-slate-900 font-serif mt-1">{selectedProduct.name}</h3>
+                <p className="text-[10px] text-slate-400 font-sans mt-0.5">SKU: {selectedProduct.sku} | ID: {selectedProduct.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold text-xs transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {loadingProductForecast ? (
+                <div className="py-16 flex flex-col items-center justify-center text-center gap-3">
+                  <div className="w-10 h-10 rounded-full border-3 border-sky-150 border-t-blue-600 animate-spin" />
+                  <span className="text-xs text-slate-500 font-bold">Running RF, XGBoost, LightGBM & CatBoost models...</span>
+                </div>
+              ) : productForecastError ? (
+                <div className="py-8 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto">
+                    <Sparkles className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-800">Forecast Initialization Required</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                    {productForecastError}
+                  </p>
+                  <div className="text-[10px] text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3 max-w-sm mx-auto">
+                    Tip: Daily transaction histories are parsed chronologically to prevent model feature drift. Submit daily logs first.
+                  </div>
+                </div>
+              ) : productForecast ? (
+                <div className="space-y-6">
+                  
+                  {/* Key Stats Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                      <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Risk Level</span>
+                      <span className={`inline-flex items-center text-xs font-black mt-2 px-2 py-0.5 rounded ${
+                        productForecast.business_metrics?.risk_level === "HIGH" 
+                          ? "bg-rose-50 text-rose-600" 
+                          : productForecast.business_metrics?.risk_level === "MEDIUM"
+                          ? "bg-amber-50 text-amber-600"
+                          : "bg-emerald-50 text-emerald-600"
+                      }`}>
+                        {productForecast.business_metrics?.risk_level || "LOW"}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                      <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Reorder Point</span>
+                      <span className="block text-base font-black text-slate-800 mt-1">
+                        {productForecast.business_metrics?.reorder_point || 0} units
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                      <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Economic Order Qty (EOQ)</span>
+                      <span className="block text-base font-black text-slate-800 mt-1">
+                        {productForecast.business_metrics?.economic_order_quantity || 0} units
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                      <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Safety Stock</span>
+                      <span className="block text-base font-black text-slate-800 mt-1">
+                        {productForecast.business_metrics?.safety_stock || 0} units
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Monthly Summary */}
+                  <div className="bg-blue-50/30 border border-blue-100/50 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800">Recommendation Summary</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed mt-1">
+                        {productForecast.business_metrics?.recommended_order_qty > 0 
+                          ? `Current stock is below reorder point. We recommend ordering ${productForecast.business_metrics.recommended_order_qty} units from the supplier.`
+                          : "Stock levels are healthy. No replenishment orders are required at this time."}
+                      </p>
+                    </div>
+                    <div className="shrink-0 bg-white border border-blue-100 px-4 py-2.5 rounded-xl text-center sm:text-right">
+                      <span className="block text-[8px] font-bold text-slate-450 uppercase leading-none">Proj. Monthly Total</span>
+                      <span className="block text-base font-black text-blue-600 mt-1">{productForecast.monthly_total_units || 0} units</span>
+                    </div>
+                  </div>
+
+                  {/* Prediction Daily Sparkline / Trend */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-800">30-Day Forward Forecast Curve</h4>
+                    <div className="h-44 bg-white border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
+                      <div className="h-32 w-full relative flex items-end">
+                        {/* Custom sparkline path */}
+                        <svg viewBox="0 0 300 100" className="w-full h-full">
+                          <line x1="0" y1="90" x2="300" y2="90" className="stroke-slate-100" strokeWidth="0.5" />
+                          <line x1="0" y1="50" x2="300" y2="50" className="stroke-slate-100" strokeWidth="0.5" strokeDasharray="2 2" />
+                          <line x1="0" y1="10" x2="300" y2="10" className="stroke-slate-100" strokeWidth="0.5" strokeDasharray="2 2" />
+
+                          {/* Render line path */}
+                          {productForecast.daily_forecast && productForecast.daily_forecast.length > 0 && (
+                            <>
+                              <path
+                                d={`M ${productForecast.daily_forecast.map((val, idx) => {
+                                  // Scale index to x (0 to 300) and value to y (10 to 90)
+                                  const x = (idx / (productForecast.daily_forecast.length - 1)) * 300;
+                                  const maxVal = Math.max(...productForecast.daily_forecast.map(d => d.predicted_units), 10);
+                                  const y = 90 - (val.predicted_units / maxVal) * 80;
+                                  return `${x} ${y}`;
+                                }).join(" L ")}`}
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="2.5"
+                              />
+                              {/* Draw small indicator points for weekends */}
+                              {productForecast.daily_forecast.map((val, idx) => {
+                                const x = (idx / (productForecast.daily_forecast.length - 1)) * 300;
+                                const maxVal = Math.max(...productForecast.daily_forecast.map(d => d.predicted_units), 10);
+                                const y = 90 - (val.predicted_units / maxVal) * 80;
+                                if (idx % 7 === 5 || idx % 7 === 6) { // approximate weekends
+                                  return <circle key={idx} cx={x} cy={y} r="2.5" fill="#ef4444" />;
+                                }
+                                return null;
+                              })}
+                            </>
+                          )}
+                        </svg>
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] text-slate-400 font-medium px-1 pt-2 border-t border-slate-50">
+                        <span>Day 1</span>
+                        <span>Day 10</span>
+                        <span>Day 20</span>
+                        <span>Day 30</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              ) : null}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-350 text-slate-700 font-bold text-xs rounded-xl transition-all"
+              >
+                Close Projections
+              </button>
+            </div>
+
           </div>
         </div>
       )}
@@ -275,6 +464,12 @@ export default function AIPredictions() {
             {predicting ? "Running ML Models..." : "Predict Next Month Sales"} <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {predictionError && (
+          <div className="p-3.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-bold font-sans">
+            ✕ {predictionError}
+          </div>
+        )}
 
         {predicting && (
           <div className="py-8 flex flex-col items-center justify-center text-center gap-3">

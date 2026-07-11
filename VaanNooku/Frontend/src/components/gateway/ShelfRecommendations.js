@@ -213,7 +213,7 @@ export function ShelfRecommendations({
               id="btn-initialize-store-engine"
               type="button"
               onClick={() => setGatewayState("purchase-order")}
-              className="bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow transition-all flex items-center gap-1.5"
+              className="bg-linear-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow transition-all flex items-center gap-1.5"
             >
               Initialize Store Engine <ArrowRight className="w-3.5 h-3.5" />
             </button>

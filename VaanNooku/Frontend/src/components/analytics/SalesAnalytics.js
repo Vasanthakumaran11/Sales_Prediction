@@ -21,9 +21,9 @@ import { StatTile } from "@/components/ui/StatTile";
 import { useStoreContext } from "@/context/StoreContext";
 
 export default function SalesAnalytics() {
-  const { historyLogs, activeStore } = useStoreContext();
+  const { historyLogs, activeStore, storeProducts } = useStoreContext();
   const [timeframe, setTimeframe] = useState("Monthly");
-  const [dateRange, setDateRange] = useState("Jan 01, 2026 - May 17, 2026");
+  const [dateRange, setDateRange] = useState("May 01, 2026 - May 31, 2026");
 
   const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
   const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
@@ -32,9 +32,9 @@ export default function SalesAnalytics() {
   const totalSales = historyLogs.reduce((sum, log) => sum + (parseFloat(log.net) || 0), 0);
   const totalOrders = historyLogs.reduce((sum, log) => sum + (parseInt(log.transactions) || 0), 0);
   const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-  const grossProfit = totalSales * 0.22;
-  const profitMargin = 22.8;
-  const returningCustomers = Math.round(totalOrders * 0.35);
+  const grossProfit = historyLogs.reduce((sum, log) => sum + ((parseFloat(log.net) || 0) - (parseFloat(log.gross) * 0.8)), 0) || (totalSales * 0.20);
+  const profitMargin = totalSales > 0 ? Math.round((grossProfit / totalSales) * 1000) / 10 : 20.0;
+  const returningCustomers = Math.round(totalOrders * 0.38);
 
   if (!historyLogs || historyLogs.length === 0) {
     return (
@@ -58,9 +58,9 @@ export default function SalesAnalytics() {
 
   const handleDateRangeChange = () => {
     const ranges = [
-      "Jan 01, 2026 - May 17, 2026",
-      "Last 30 Days (Apr 17 - May 17)",
-      "Year to Date (Jan 01 - May 17)"
+      "May 01, 2026 - May 31, 2026",
+      "Last 30 Days (May 01 - May 31)",
+      "Year to Date (Jan 01 - May 31)"
     ];
     const currentIndex = ranges.indexOf(dateRange);
     const nextIndex = (currentIndex + 1) % ranges.length;
@@ -68,33 +68,36 @@ export default function SalesAnalytics() {
   };
 
   const handleExport = () => {
-    let csvContent = "data:text/csv;charset=utf-8,Metric,Value\nTotal Revenue,₹8,25,590.20\nTotal Orders,6,120\nAverage Bill,₹135.00\nGross Profit,₹1,88,230\nMargin,22.8%\n";
+    let csvContent = "data:text/csv;charset=utf-8,Metric,Value\n" +
+      `Total Revenue,Rs. ${totalSales.toFixed(2)}\n` +
+      `Total Orders,${totalOrders}\n` +
+      `Average Bill,Rs. ${avgOrderValue.toFixed(2)}\n` +
+      `Gross Profit,Rs. ${grossProfit.toFixed(2)}\n` +
+      `Margin,${profitMargin}%\n`;
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "sales_analytics_report.csv");
+    link.setAttribute("download", `sales_report_${activeStore?.id || "store"}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Top 5 Products list
-  const bestSellers = [
-    { name: "Tata Tea Premium 250g", category: "Beverages", val: 25620 },
-    { name: "Aashirvaad Atta 5kg", category: "Staples & Grains", val: 22480 },
-    { name: "Amul Salted Butter 100g", category: "Dairy & Eggs", val: 18750 },
-    { name: "Surf Excel Matic 1kg", category: "Household Essentials", val: 15320 },
-    { name: "Namkeen", category: "Snacks & Branded Foods", val: 12980 },
-  ];
+  // Calculate Best Sellers dynamically from active storeProducts
+  const bestSellers = storeProducts && storeProducts.length > 0 
+    ? [...storeProducts].sort((a, b) => b.stock - a.stock).slice(0, 5).map(p => ({
+        name: p.name,
+        category: p.category,
+        val: Math.round(p.sellingPrice * p.stock * 0.4) // simulated sales value based on current stock
+      }))
+    : [];
 
-  // Locations data list
-  const locations = [
-    { name: "T. Nagar, Chennai", val: 124560, pct: 100 },
-    { name: "Indiranagar, Bangalore", val: 105230, pct: 85 },
-    { name: "Bandra, Mumbai", val: 98750, pct: 80 },
-    { name: "Koramangala, Bangalore", val: 87450, pct: 70 },
-    { name: "Whitefield, Bangalore", val: 76320, pct: 60 },
-  ];
+  // Locations data list or store location description
+  const locations = activeStore
+    ? [
+        { name: `${activeStore.name} (${activeStore.location})`, val: totalSales, pct: 100 }
+      ]
+    : [];
 
   // Heatmap helper (Days vs Hours)
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -295,23 +298,27 @@ export default function SalesAnalytics() {
           <div className="h-64 bg-slate-50/50 rounded-xl border border-sky-100 p-4 relative flex flex-col justify-between">
             {/* SVG line graph */}
             <div className="w-full h-full relative">
-              {/* Event Annotations */}
-              <div className="absolute top-2 left-[5%] bg-white border border-sky-100 rounded px-1.5 py-0.5 shadow-sm text-[8px] text-slate-700">
-                <span className="font-bold text-emerald-600">New Year</span>
-                <span className="block text-[7px] text-slate-400">Higher demand for gifting</span>
-              </div>
-              <div className="absolute top-4 left-[28%] bg-white border border-sky-100 rounded px-1.5 py-0.5 shadow-sm text-[8px] text-slate-700">
-                <span className="font-bold text-blue-600">Republic Day</span>
-                <span className="block text-[7px] text-slate-400">Winter promos</span>
-              </div>
-              <div className="absolute top-2 left-[48%] bg-white border border-sky-100 rounded px-1.5 py-0.5 shadow-sm text-[8px] text-slate-700">
-                <span className="font-bold text-amber-600">Holi</span>
-                <span className="block text-[7px] text-slate-400">Festive shopping</span>
-              </div>
-              <div className="absolute top-4 left-[68%] bg-white border border-sky-100 rounded px-1.5 py-0.5 shadow-sm text-[8px] text-slate-700">
-                <span className="font-bold text-sky-600">Akshaya Tritiya</span>
-                <span className="block text-[7px] text-slate-400">Strong gold & household sales</span>
-              </div>
+              {/* Event Annotations - Show only for demo */}
+              {isDemo && (
+                <>
+                  <div className="absolute top-2 left-[5%] bg-white border border-sky-100 rounded px-1.5 py-0.5 shadow-sm text-[8px] text-slate-700">
+                    <span className="font-bold text-emerald-600">New Year</span>
+                    <span className="block text-[7px] text-slate-400">Higher demand for gifting</span>
+                  </div>
+                  <div className="absolute top-4 left-[28%] bg-white border border-sky-100 rounded px-1.5 py-0.5 shadow-sm text-[8px] text-slate-700">
+                    <span className="font-bold text-blue-600">Republic Day</span>
+                    <span className="block text-[7px] text-slate-400">Winter promos</span>
+                  </div>
+                  <div className="absolute top-2 left-[48%] bg-white border border-sky-100 rounded px-1.5 py-0.5 shadow-sm text-[8px] text-slate-700">
+                    <span className="font-bold text-amber-600">Holi</span>
+                    <span className="block text-[7px] text-slate-400">Festive shopping</span>
+                  </div>
+                  <div className="absolute top-4 left-[68%] bg-white border border-sky-100 rounded px-1.5 py-0.5 shadow-sm text-[8px] text-slate-700">
+                    <span className="font-bold text-sky-600">Akshaya Tritiya</span>
+                    <span className="block text-[7px] text-slate-400">Strong gold & household sales</span>
+                  </div>
+                </>
+              )}
 
               <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible">
                 <line x1="0" y1="35" x2="100" y2="35" className="stroke-slate-200" strokeWidth="0.2" />
@@ -319,33 +326,58 @@ export default function SalesAnalytics() {
                 <line x1="0" y1="5" x2="100" y2="5" className="stroke-slate-200" strokeWidth="0.2" strokeDasharray="1 1" />
 
                 {/* Sales Line */}
-                <path d="M 5 28 Q 23 23 45 27 T 85 15 T 95 10" fill="none" stroke="#0284c7" strokeWidth="1.2" />
-                <path d="M 5 28 Q 23 23 45 27 T 85 15 T 95 10 L 95 35 L 5 35 Z" fill="url(#salesGrad)" className="opacity-10" />
-
-                <defs>
-                  <linearGradient id="salesGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#0284c7" />
-                    <stop offset="100%" stopColor="#ffffff" />
-                  </linearGradient>
-                </defs>
-
-                {/* Dots */}
-                <circle cx="5" cy="28" r="0.8" fill="#0284c7" />
-                <circle cx="23" cy="23" r="0.8" fill="#0284c7" />
-                <circle cx="45" cy="27" r="0.8" fill="#0284c7" />
-                <circle cx="68" cy="20" r="0.8" fill="#0284c7" />
-                <circle cx="85" cy="15" r="0.8" fill="#0284c7" />
-                <circle cx="95" cy="10" r="0.8" fill="#0284c7" />
+                {(() => {
+                  const sortedLogs = [...historyLogs].sort((a, b) => new Date(a.date) - new Date(b.date));
+                  const maxNet = Math.max(...sortedLogs.map(l => l.net), 1000);
+                  const points = sortedLogs.map((log, idx) => {
+                    const x = 5 + (idx / Math.max(1, sortedLogs.length - 1)) * 90;
+                    const y = 35 - (log.net / maxNet) * 28;
+                    return { x, y, log };
+                  });
+                  const pathD = points.length > 0 ? `M ${points.map(p => `${p.x} ${p.y}`).join(" L ")}` : "";
+                  const areaD = points.length > 0 ? `${pathD} L 95 35 L 5 35 Z` : "";
+                  return (
+                    <>
+                      {pathD && <path d={pathD} fill="none" stroke="#0284c7" strokeWidth="1.2" />}
+                      {areaD && <path d={areaD} fill="url(#salesGrad)" className="opacity-10" />}
+                      <defs>
+                        <linearGradient id="salesGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#0284c7" />
+                          <stop offset="100%" stopColor="#ffffff" />
+                        </linearGradient>
+                      </defs>
+                      {points.map((p, idx) => {
+                        // Render dots only for up to 10 points or every 3rd point if many, to keep it clean
+                        if (points.length > 15 && idx % 3 !== 0) return null;
+                        return (
+                          <circle key={idx} cx={p.x} cy={p.y} r="0.8" fill="#0284c7" className="hover:r-1.5 cursor-pointer transition-all" />
+                        );
+                      })}
+                    </>
+                  );
+                })()}
               </svg>
             </div>
             {/* Months Axis */}
-            <div className="flex justify-between text-[8px] text-slate-500 px-2 uppercase tracking-wider font-bold">
-              <span>Dec-25</span>
-              <span>Jan-26</span>
-              <span>Feb-26</span>
-              <span>Mar-26</span>
-              <span>Apr-26</span>
-              <span>May-26</span>
+            <div className="flex justify-between text-[7px] text-slate-500 px-2 uppercase tracking-wider font-bold">
+              {isDemo ? (
+                <>
+                  <span>Dec-25</span>
+                  <span>Jan-26</span>
+                  <span>Feb-26</span>
+                  <span>Mar-26</span>
+                  <span>Apr-26</span>
+                  <span>May-26</span>
+                </>
+              ) : (
+                <>
+                  <span>May 01</span>
+                  <span>May 08</span>
+                  <span>May 15</span>
+                  <span>May 22</span>
+                  <span>May 31</span>
+                </>
+              )}
             </div>
           </div>
         </Card>
@@ -359,45 +391,74 @@ export default function SalesAnalytics() {
             <p className="text-[10px] text-slate-500">Share of total sales by category</p>
           </div>
 
-          <div className="flex items-center justify-between gap-4 font-sans text-xs">
-            <svg width="100" height="100" viewBox="0 0 40 40" className="transform -rotate-90 shrink-0">
-              <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#0ea5e9" strokeWidth="4" strokeDasharray="32 68" strokeDashoffset="0" />
-              <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#3b82f6" strokeWidth="4" strokeDasharray="22 78" strokeDashoffset="-32" />
-              <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#14b8a6" strokeWidth="4" strokeDasharray="15 85" strokeDashoffset="-54" />
-              <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#f59e0b" strokeWidth="4" strokeDasharray="12 88" strokeDashoffset="-69" />
-              <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#ec4899" strokeWidth="4" strokeDasharray="10 90" strokeDashoffset="-81" />
-              <circle cx="20" cy="20" r="15.915" fill="transparent" stroke="#94a3b8" strokeWidth="4" strokeDasharray="9 91" strokeDashoffset="-91" />
-              <circle cx="20" cy="20" r="13" fill="#ffffff" />
-            </svg>
+          {(() => {
+            // Group active storeProducts by category to calculate dynamic share
+            const categorySums = {};
+            let grandTotal = 0;
+            
+            (storeProducts || []).forEach(p => {
+              const val = Math.round(p.sellingPrice * p.stock * 0.4);
+              categorySums[p.category] = (categorySums[p.category] || 0) + val;
+              grandTotal += val;
+            });
 
-            <div className="space-y-1.5 flex-1 text-[11px] text-slate-600 font-semibold">
-              <div className="flex justify-between">
-                <span>Staples & Grocery</span>
-                <span className="font-bold text-slate-900">32%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Beverages</span>
-                <span className="font-bold text-slate-900">22%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Dairy & Eggs</span>
-                <span className="font-bold text-slate-900">15%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Snacks & Branded Foods</span>
-                <span className="font-bold text-slate-900">12%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Personal Care</span>
-                <span className="font-bold text-slate-900">10%</span>
-              </div>
-            </div>
-          </div>
+            const catList = Object.entries(categorySums).map(([category, value]) => ({
+              category,
+              value,
+              pct: grandTotal > 0 ? Math.round((value / grandTotal) * 100) : 0
+            })).sort((a, b) => b.value - a.value);
 
-          <div className="border-t border-slate-100 pt-3 flex justify-between items-center text-[10px] text-slate-500 font-sans">
-            <span>Total Sales</span>
-            <span className="font-black text-slate-950">₹8,45,230.50</span>
-          </div>
+            const finalCategories = catList || [];
+
+            // Simple SVG pie segment offsets - precomputed to avoid state reassignment in JSX
+            let runningOffset = 0;
+            const segments = finalCategories.map((cat) => {
+              const currentOffset = -runningOffset;
+              runningOffset += cat.pct;
+              return { ...cat, currentOffset };
+            });
+            const colors = ["#0ea5e9", "#3b82f6", "#14b8a6", "#f59e0b", "#ec4899", "#94a3b8"];
+
+            return (
+              <>
+                <div className="flex items-center justify-between gap-4 font-sans text-xs">
+                  <svg width="100" height="100" viewBox="0 0 40 40" className="transform -rotate-90 shrink-0">
+                    {segments.map((cat, idx) => {
+                      const strokeDash = `${cat.pct} ${100 - cat.pct}`;
+                      return (
+                        <circle
+                          key={idx}
+                          cx="20"
+                          cy="20"
+                          r="15.915"
+                          fill="transparent"
+                          stroke={colors[idx % colors.length]}
+                          strokeWidth="4"
+                          strokeDasharray={strokeDash}
+                          strokeDashoffset={cat.currentOffset}
+                        />
+                      );
+                    })}
+                    <circle cx="20" cy="20" r="13" fill="#ffffff" />
+                  </svg>
+
+                  <div className="space-y-1.5 flex-1 text-[11px] text-slate-600 font-semibold max-h-36 overflow-y-auto">
+                    {finalCategories.slice(0, 5).map((cat, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{cat.category}</span>
+                        <span className="font-bold text-slate-900">{cat.pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-3 flex justify-between items-center text-[10px] text-slate-500 font-sans">
+                  <span>Total Sales</span>
+                  <span className="font-black text-slate-950">Rs. {totalSales.toLocaleString()}</span>
+                </div>
+              </>
+            );
+          })()}
         </Card>
       </div>
 

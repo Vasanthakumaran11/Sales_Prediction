@@ -14,6 +14,7 @@ class ProductBase(BaseModel):
     sellingPrice: Optional[float] = None
     price: Optional[float] = None
     category: Optional[str] = None
+    itemId: Optional[str] = None
 
 class StoreRegisterRequest(BaseModel):
     storeName: str
