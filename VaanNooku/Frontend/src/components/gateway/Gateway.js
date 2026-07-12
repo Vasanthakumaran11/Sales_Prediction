@@ -603,9 +603,9 @@ export function Gateway() {
 
           <div className="hidden md:block">
             <Image
-              src="/Images/onboarding1.jpg"
+              src="/img-2.png"
               alt="Onboarding Illustration"
-              width={500}
+              width={700}
               height={500}
               className="rounded-2xl object-cover"
               priority
