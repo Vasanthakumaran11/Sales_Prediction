@@ -2,29 +2,24 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from src.models import models
 from src.schemas import schemas
+from src.security import hash_password, verify_password, create_access_token
 
 def login_store(db: Session, request: schemas.LoginRequest):
     # Find store matching username/name
     store = db.query(models.Store).filter(
-        (models.Store.name.ilike(request.username)) | 
+        (models.Store.name.ilike(request.username)) |
         (models.Store.id.ilike(request.username)) |
         (models.Store.id.ilike(request.username.replace(" ", "-")))
     ).first()
 
-    if not store:
+    if not store or not verify_password(request.password or "", store.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Store credentials not found."
-        )
-
-    if store.password and store.password != request.password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect store password."
+            detail="Incorrect store name or password."
         )
 
     return {
-        "token": "auth-token-disabled",
+        "token": create_access_token({"sub": store.id}),
         "store": {
             "id": store.id,
             "name": store.name,
@@ -48,7 +43,13 @@ def login_store(db: Session, request: schemas.LoginRequest):
 
 def register_store(db: Session, request: schemas.StoreRegisterRequest):
     store_id = request.storeName.lower().strip().replace(" ", "-").replace("/", "-")
-    
+
+    if not request.password or len(request.password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A password of at least 6 characters is required to register a store."
+        )
+
     # Check duplicate
     existing = db.query(models.Store).filter(models.Store.id == store_id).first()
     if existing:
@@ -61,7 +62,7 @@ def register_store(db: Session, request: schemas.StoreRegisterRequest):
     new_store = models.Store(
         id=store_id,
         name=request.storeName,
-        password=request.password,
+        password=hash_password(request.password),
         type=request.storeType,
         location=request.locationType,
         investment=request.investment,
@@ -159,6 +160,7 @@ def register_store(db: Session, request: schemas.StoreRegisterRequest):
         "adminEmail": new_store.admin_email,
         "adminPhone": new_store.admin_phone,
         "adminRole": new_store.admin_role,
+        "token": create_access_token({"sub": new_store.id}),
         "metrics": {
             "forecastR2": 0.90,
             "wasteMargin": 0.05,

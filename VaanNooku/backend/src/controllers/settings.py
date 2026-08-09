@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from src.models import models
 from src.schemas import schemas
+from src.security import hash_password, verify_password
 
 def update_profile(request: schemas.ProfileUpdateRequest):
     return {
@@ -18,11 +19,14 @@ def update_password(db: Session, request: schemas.PasswordUpdateRequest):
     store = db.query(models.Store).filter(models.Store.id == request.storeId).first()
     if not store:
         raise HTTPException(status_code=404, detail="Store node not found.")
-    
-    if store.password and store.password != request.currentPassword:
+
+    if not verify_password(request.currentPassword, store.password):
         raise HTTPException(status_code=400, detail="Invalid current password.")
-        
-    store.password = request.newPassword
+
+    if not request.newPassword or len(request.newPassword) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters.")
+
+    store.password = hash_password(request.newPassword)
     db.commit()
     return {
         "success": True,

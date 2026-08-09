@@ -10,10 +10,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent
 MODELS_DIR = BASE_DIR / "models"
 ENCODERS_DIR = BASE_DIR / "encoders"
+METRICS_PATH = BASE_DIR.parent.parent / "ml_workspace" / "metrics" / "ensemble_metrics.json"
 
 _models = None
 _weights = None
 _encoders = None
+_ensemble_r2 = None
 
 # Categorical columns that have saved encoders
 CATEGORICAL_COLS = [
@@ -30,9 +32,9 @@ def _load_encoders():
     return encoders
 
 
-def load_all():
+def load_all(force: bool = False):
     global _models, _weights, _encoders
-    if _models is not None:
+    if _models is not None and not force:
         return _models, _weights, _encoders
 
     # Note: lightbgm.pkl has a typo in filename — map it correctly
@@ -65,3 +67,15 @@ def get_models():
     if _models is None:
         load_all()
     return _models, _weights, _encoders
+
+
+def get_ensemble_r2() -> float:
+    """Real held-out R² from the last training run (ml_workspace/metrics/ensemble_metrics.json),
+    loaded once and cached. Falls back to None if the metrics file is missing."""
+    global _ensemble_r2
+    if _ensemble_r2 is None:
+        if METRICS_PATH.exists():
+            _ensemble_r2 = json.loads(METRICS_PATH.read_text()).get("r2")
+        else:
+            _ensemble_r2 = None
+    return _ensemble_r2

@@ -103,3 +103,25 @@ class TransactionItem(Base):
     # Relationships
     transaction = relationship("TransactionDaily", back_populates="items")
     product = relationship("Product", back_populates="transaction_items")
+
+
+class AdminUser(Base):
+    """Ops/staff console account — intentionally separate from Store so a
+    merchant JWT can never be used against admin-only endpoints."""
+    __tablename__ = "admin_users"
+
+    id = Column(String, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password = Column(String, nullable=False)
+    role = Column(String, default="admin")  # admin | ml_engineer | support
+
+
+class ComplaintTicket(Base):
+    __tablename__ = "complaint_tickets"
+
+    id = Column(String, primary_key=True, index=True)
+    store_id = Column(String, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False)
+    subject = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    status = Column(String, default="Open")  # Open | In Progress | Resolved
+    created_at = Column(String, nullable=False)

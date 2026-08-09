@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.config.database import engine, Base
 from src.routes.api import router as api_router
 from src.routes.prediction_routes import router as pred_router
+from src.routes.admin_routes import router as admin_router
 from src.models import models
 
 # Add backend root to sys.path so `ml` package is importable
@@ -36,6 +37,7 @@ app.add_middleware(
 # Register API Routers
 app.include_router(api_router, prefix="/api")
 app.include_router(pred_router)  # already has /api/predictions prefix
+app.include_router(admin_router)  # already has /api/admin prefix
 
 @app.on_event("startup")
 def startup_event():

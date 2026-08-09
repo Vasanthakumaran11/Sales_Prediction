@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from src.models.models import Base, Store, Supplier, Product, StockLevel, TransactionDaily, TransactionItem
+from src.security import hash_password
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
@@ -132,7 +133,7 @@ print("==> Step 4: Creating STORE_001...")
 new_store = Store(
     id           = STORE_ID,
     name         = STORE_NAME,
-    password     = "vaannooku123",
+    password     = hash_password("vaannooku123"),
     type         = STORE_TYPE,
     location     = LOCATION,
     investment   = INVESTMENT,

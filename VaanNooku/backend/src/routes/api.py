@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from src.config.database import get_db
 from src.schemas import schemas
 from src.controllers import auth, sales, inventory, predictions, settings
 from src.models import models
+from src.deps import get_current_store, require_matching_store
 
 router = APIRouter()
 
@@ -29,7 +30,8 @@ def parse_plan(file: UploadFile = File(...)):
 
 # Daily Sales Ledger postings
 @router.post("/stores/{store_id}/daily-log")
-def submit_daily_log(store_id: str, request: schemas.DailyLogSubmitRequest, db: Session = Depends(get_db)):
+def submit_daily_log(store_id: str, request: schemas.DailyLogSubmitRequest, db: Session = Depends(get_db),
+                      _current_store: models.Store = Depends(require_matching_store)):
     return sales.submit_log(db, store_id, request)
 
 @router.get("/stores/{store_id}/daily-logs")
@@ -60,7 +62,8 @@ def get_catalog_products(
     return inventory.get_products(db, store_id, category, search)
 
 @router.post("/stores/{store_id}/products")
-def add_new_product(store_id: str, request: schemas.SkuAddRequest, db: Session = Depends(get_db)):
+def add_new_product(store_id: str, request: schemas.SkuAddRequest, db: Session = Depends(get_db),
+                     _current_store: models.Store = Depends(require_matching_store)):
     return inventory.add_product(db, store_id, request)
 
 # ML Forecast Metrics Routing
@@ -74,15 +77,19 @@ def get_demand_forecast(store_id: str, db: Session = Depends(get_db)):
 
 # Preferences & Account Settings Routing
 @router.put("/users/profile")
-def update_profile_settings(request: schemas.ProfileUpdateRequest):
+def update_profile_settings(request: schemas.ProfileUpdateRequest,
+                             _current_store: models.Store = Depends(get_current_store)):
     return settings.update_profile(request)
 
 @router.put("/users/password")
-def update_password_settings(request: schemas.PasswordUpdateRequest, db: Session = Depends(get_db)):
+def update_password_settings(request: schemas.PasswordUpdateRequest, db: Session = Depends(get_db),
+                              current_store: models.Store = Depends(get_current_store)):
+    if current_store.id != request.storeId:
+        raise HTTPException(status_code=403, detail="Not authorized to change this store's password.")
     return settings.update_password(db, request)
 
 @router.post("/stores/{store_id}/backup")
-def backup_system_configuration(store_id: str):
+def backup_system_configuration(store_id: str, _current_store: models.Store = Depends(require_matching_store)):
     return settings.trigger_backup(store_id)
 
 @router.get("/stores/{store_id}/backup/download")
@@ -90,9 +97,11 @@ def download_backup_file():
     return settings.download_backup()
 
 @router.post("/stores/{store_id}/reset")
-def reset_database_logs(store_id: str, db: Session = Depends(get_db)):
+def reset_database_logs(store_id: str, db: Session = Depends(get_db),
+                         _current_store: models.Store = Depends(require_matching_store)):
     return settings.reset_store_data(db, store_id)
 
 @router.delete("/stores/{store_id}")
-def delete_store_account(store_id: str, db: Session = Depends(get_db)):
+def delete_store_account(store_id: str, db: Session = Depends(get_db),
+                          _current_store: models.Store = Depends(require_matching_store)):
     return settings.delete_store(db, store_id)

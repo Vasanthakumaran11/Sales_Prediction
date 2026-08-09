@@ -75,3 +75,18 @@ class PasswordUpdateRequest(BaseModel):
     storeId: str
     currentPassword: str
     newPassword: str
+
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class ComplaintCreateRequest(BaseModel):
+    storeId: str
+    subject: str
+    description: Optional[str] = None
+
+class ComplaintStatusUpdateRequest(BaseModel):
+    status: str
+
+class RetrainingTriggerRequest(BaseModel):
+    datasetFilename: Optional[str] = None
