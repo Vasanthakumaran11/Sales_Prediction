@@ -22,7 +22,7 @@ export default function AlertsView() {
     return (
       <div className="space-y-6">
         <div className="h-10 w-1/3 bg-slate-200 rounded animate-pulse" />
-        <Skeleton className="h-[250px]" />
+        <Skeleton className="h-62.5" />
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function AlertsView() {
         <Card className="flex flex-col items-center justify-center text-center p-12 text-slate-400">
           <BellRing className="w-12 h-12 text-slate-300 mb-2" />
           <h3 className="text-sm font-bold text-slate-800 font-serif">No Active Deficits</h3>
-          <p className="text-xs text-slate-550 mt-1 max-w-sm">
+          <p className="text-xs text-slate-500 mt-1 max-w-sm">
             All inventory levels are currently above reorder limits and safety buffers.
           </p>
         </Card>

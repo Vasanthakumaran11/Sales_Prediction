@@ -147,7 +147,7 @@ export function Gateway() {
     try {
       const response = await loginStore(loginCredentials);
       if (response && response.store) {
-        enterStore(response.store);
+        enterStore({ ...response.store, token: response.token });
         return;
       } else {
         setLoginError("Invalid username or password. Check database records.");
@@ -305,7 +305,7 @@ export function Gateway() {
                 <h3 className="text-lg font-bold text-slate-900 font-serif group-hover:text-sky-600 transition-colors">
                   Login to Your Store
                 </h3>
-                <p className="text-xs text-slate-550 leading-relaxed">
+                <p className="text-xs text-slate-500 leading-relaxed">
                   Synchronize with active store databases, run reorder matrices, and log daily employee transactions.
                 </p>
               </div>
@@ -327,7 +327,7 @@ export function Gateway() {
                 <h3 className="text-lg font-bold text-slate-900 font-serif group-hover:text-sky-600 transition-colors">
                   New Store Registration
                 </h3>
-                <p className="text-xs text-slate-550 leading-relaxed">
+                <p className="text-xs text-slate-500 leading-relaxed">
                   Initialize a new retail format. Analyze opening month seasonality, budget allocations, and cold-start projections.
                 </p>
               </div>
@@ -343,7 +343,7 @@ export function Gateway() {
       {gatewayState === "register" && (
         <form
           onSubmit={handleRegisterSubmit}
-          className="w-full max-w-5xl bg-white border border-sky-100 rounded-2xl shadow-xl overflow-hidden relative z-10 flex flex-col min-h-[520px]"
+          className="w-full max-w-5xl bg-white border border-sky-100 rounded-2xl shadow-xl overflow-hidden relative z-10 flex flex-col min-h-130"
         >
           {/* macOS-style Top Bar */}
           <div className="relative p-4 bg-slate-100 border-b border-slate-200 flex items-center justify-center h-12 shrink-0">
@@ -447,7 +447,7 @@ export function Gateway() {
                       name="locationType"
                       value={formData.locationType}
                       onChange={handleInputChange}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-850 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-size-[10px_10px] bg-position-[right_1rem_center] bg-no-repeat font-sans"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-sky-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-size-[10px_10px] bg-position-[right_1rem_center] bg-no-repeat font-sans"
                     >
                       <option value="Urban">Urban</option>
                       <option value="Semi-Urban">Semi-Urban</option>
@@ -711,7 +711,7 @@ export function Gateway() {
           </button>
           
           <div className="text-center text-xs font-semibold text-slate-500 font-sans">
-            Don't have credentials?{" "}
+            Don&apos;t have credentials?{" "}
             <button
               type="button"
               onClick={() => setGatewayState("register")}

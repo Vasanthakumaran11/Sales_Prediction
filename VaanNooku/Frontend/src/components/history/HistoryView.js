@@ -42,7 +42,7 @@ export default function HistoryView() {
           <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
             <History className="w-6 h-6 animate-pulse" />
           </div>
-          <h3 className="text-sm font-bold text-slate-850 font-serif">No Historical Sales Records</h3>
+          <h3 className="text-sm font-bold text-slate-800 font-serif">No Historical Sales Records</h3>
           <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
             This store is newly registered. Go to the <strong>Data Entry</strong> panel to add your first sales transaction log.
           </p>
@@ -82,12 +82,12 @@ export default function HistoryView() {
           </div>
 
           <div className="space-y-1">
-            <span className="block text-[9px] text-slate-450 font-bold uppercase">Total Discounts (-)</span>
+            <span className="block text-[9px] text-slate-400 font-bold uppercase">Total Discounts (-)</span>
             <span className="text-base font-black text-rose-600 leading-none">- ₹{totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
 
           <div className="space-y-1">
-            <span className="block text-[9px] text-slate-455 font-bold uppercase">Net Profits (₹)</span>
+            <span className="block text-[9px] text-slate-400 font-bold uppercase">Net Profits (₹)</span>
             <span className="text-base font-black text-emerald-600 leading-none">₹{projectedProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
         </div>

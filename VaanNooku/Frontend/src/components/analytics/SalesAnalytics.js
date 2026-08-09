@@ -19,14 +19,14 @@ import {
 import { PageHeader, Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { useStoreContext } from "@/context/StoreContext";
+import { DEMO_STORE_IDS } from "@/lib/constants";
 
 export default function SalesAnalytics() {
   const { historyLogs, activeStore, storeProducts } = useStoreContext();
   const [timeframe, setTimeframe] = useState("Monthly");
   const [dateRange, setDateRange] = useState("May 01, 2026 - May 31, 2026");
 
-  const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
-  const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+  const isDemo = activeStore ? DEMO_STORE_IDS.includes(activeStore.id) : true;
 
   // Dynamic calculations
   const totalSales = historyLogs.reduce((sum, log) => sum + (parseFloat(log.net) || 0), 0);
@@ -47,7 +47,7 @@ export default function SalesAnalytics() {
           <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
             <BarChart3 className="w-6 h-6 animate-pulse" />
           </div>
-          <h3 className="text-sm font-bold text-slate-850 font-serif">No Analytics Data</h3>
+          <h3 className="text-sm font-bold text-slate-800 font-serif">No Analytics Data</h3>
           <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
             There are no sales logs recorded for this store yet. Analytics charts will be generated once your transactions are received.
           </p>
@@ -411,12 +411,11 @@ export default function SalesAnalytics() {
             const finalCategories = catList || [];
 
             // Simple SVG pie segment offsets - precomputed to avoid state reassignment in JSX
-            let runningOffset = 0;
-            const segments = finalCategories.map((cat) => {
-              const currentOffset = -runningOffset;
-              runningOffset += cat.pct;
-              return { ...cat, currentOffset };
-            });
+            const segments = finalCategories.reduce((acc, cat) => {
+              const priorTotal = acc.length > 0 ? acc[acc.length - 1].runningTotal : 0;
+              acc.push({ ...cat, currentOffset: -priorTotal, runningTotal: priorTotal + cat.pct });
+              return acc;
+            }, []);
             const colors = ["#0ea5e9", "#3b82f6", "#14b8a6", "#f59e0b", "#ec4899", "#94a3b8"];
 
             return (

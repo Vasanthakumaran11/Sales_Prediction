@@ -25,6 +25,9 @@ import {
   EyeOff,
 } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
+import { DEMO_STORE_IDS } from "@/lib/constants";
+import { updatePassword } from "@/lib/api/settings";
+import { fileComplaint } from "@/lib/api/complaints";
 
 export default function Settings() {
   const { theme, setTheme, exitToGateway, activeStore } = useStoreContext();
@@ -32,7 +35,7 @@ export default function Settings() {
 
   // Determine if this is a demo store (not a real registered store)
   const isDemo = activeStore
-    ? ["balaji-store", "shiva-stores", "surya-markets"].includes(activeStore.id)
+    ? DEMO_STORE_IDS.includes(activeStore.id)
     : true;
   
   // Form Preference states
@@ -67,12 +70,13 @@ export default function Settings() {
 
   // Password Update Form states
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "password123",
+    currentPassword: "",
     newPassword: "",
     confirmNewPassword: ""
   });
 
   // Password visibility toggles
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -81,6 +85,10 @@ export default function Settings() {
 
   // Backup logs
   const [lastBackup, setLastBackup] = useState("May 16, 2026 10:30 AM");
+
+  // Report an Issue form state
+  const [complaintForm, setComplaintForm] = useState({ subject: "", description: "" });
+  const [submittingComplaint, setSubmittingComplaint] = useState(false);
 
   // Sync profile values when activeStore changes
   useEffect(() => {
@@ -113,7 +121,7 @@ export default function Settings() {
         }
       }, 0);
     }
-  }, [activeStore]);
+  }, [activeStore, isDemo]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -160,20 +168,26 @@ export default function Settings() {
   };
 
   // Change Password Action
-  const handleChangePassword = () => {
-    if (!passwordForm.newPassword || !passwordForm.confirmNewPassword) {
-      triggerToast("Please fill in both new password fields.");
+  const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmNewPassword) {
+      triggerToast("Please fill in your current and new password fields.");
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
       triggerToast("Error: Confirm password does not match new password.");
       return;
     }
-    setPasswordForm((prev) => ({
-      currentPassword: prev.newPassword,
-      newPassword: "",
-      confirmNewPassword: ""
-    }));
+
+    if (!isDemo && activeStore) {
+      try {
+        await updatePassword(activeStore.id, passwordForm.currentPassword, passwordForm.newPassword);
+      } catch (err) {
+        triggerToast(err.message || "Failed to change password. Check your current password.");
+        return;
+      }
+    }
+
+    setPasswordForm({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
     triggerToast("Password changed successfully.");
   };
 
@@ -201,6 +215,27 @@ export default function Settings() {
     downloadAnchor.click();
     document.body.removeChild(downloadAnchor);
     triggerToast("Settings backup exported successfully.");
+  };
+
+  // Report an Issue Action
+  const handleSubmitComplaint = async () => {
+    if (!complaintForm.subject.trim()) {
+      triggerToast("Please enter a subject for your report.");
+      return;
+    }
+    if (isDemo || !activeStore) {
+      triggerToast("Issue reporting is only available for registered stores.");
+      return;
+    }
+    setSubmittingComplaint(true);
+    try {
+      await fileComplaint(activeStore.id, complaintForm.subject, complaintForm.description);
+      setComplaintForm({ subject: "", description: "" });
+      triggerToast("Issue reported. Our team will follow up shortly.");
+    } catch (err) {
+      triggerToast(err.message || "Failed to submit report. Please try again.");
+    }
+    setSubmittingComplaint(false);
   };
 
   // Danger Zone handlers
@@ -410,12 +445,22 @@ export default function Settings() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans mt-1">
                   <div className="space-y-1">
                     <label className="text-[9px] text-slate-400 font-bold uppercase">Current Password</label>
-                    <input
-                      type="password"
-                      value={passwordForm.currentPassword}
-                      readOnly
-                      className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 focus:outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showCurrentPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={passwordForm.currentPassword}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-slate-700 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-sky-600 transition-colors"
+                      >
+                        {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] text-slate-400 font-bold uppercase">New Password</label>
@@ -430,7 +475,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-2.5 top-2 text-slate-400 hover:text-sky-650 transition-colors"
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-sky-600 transition-colors"
                       >
                         {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -449,7 +494,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-2.5 top-2 text-slate-400 hover:text-sky-655 transition-colors"
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-sky-600 transition-colors"
                       >
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -610,6 +655,44 @@ export default function Settings() {
                 </div>
               </Card>
 
+              {/* Report an Issue */}
+              <Card className="p-5 flex flex-col justify-between gap-4">
+                <div className="pb-2 border-b border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-900 font-serif">Report an Issue</h3>
+                  <p className="text-[10px] text-slate-500">Flag a bad prediction, data sync problem, or bug for our team to triage.</p>
+                </div>
+                <div className="space-y-3 text-xs font-sans">
+                  <div className="space-y-1">
+                    <label className="text-[9px] text-slate-400 font-bold uppercase">Subject</label>
+                    <input
+                      type="text"
+                      value={complaintForm.subject}
+                      onChange={(e) => setComplaintForm((prev) => ({ ...prev, subject: e.target.value }))}
+                      placeholder="e.g. Forecast for Milk looks way too high"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] text-slate-400 font-bold uppercase">Details (Optional)</label>
+                    <textarea
+                      value={complaintForm.description}
+                      onChange={(e) => setComplaintForm((prev) => ({ ...prev, description: e.target.value }))}
+                      placeholder="Any extra context that would help us investigate..."
+                      className="w-full h-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSubmitComplaint}
+                    disabled={submittingComplaint}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-sm font-sans disabled:opacity-50"
+                  >
+                    {submittingComplaint ? "Submitting..." : "Submit Report"}
+                  </button>
+                </div>
+              </Card>
+
               {/* Danger Zone */}
               <Card className="p-5 flex flex-col justify-between gap-4 border-rose-100 bg-rose-50/10">
                 <div className="pb-2 border-b border-rose-100">
@@ -634,7 +717,7 @@ export default function Settings() {
               </Card>
             </div>
           ) : (
-            <Card className="flex flex-col items-center justify-center text-center p-12 text-slate-400 min-h-[300px]">
+            <Card className="flex flex-col items-center justify-center text-center p-12 text-slate-400 min-h-75">
               <Lock className="w-12 h-12 text-slate-300 mb-2" />
               <h3 className="text-sm font-bold text-slate-800 font-serif">Module Lock</h3>
               <p className="text-xs text-slate-500 mt-1 max-w-sm">
@@ -650,7 +733,7 @@ export default function Settings() {
               <AlertTriangle className="w-8 h-8 animate-bounce" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 font-serif">Confirm Account Deactivation</h3>
-            <p className="text-xs text-slate-555 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               WARNING: Account deletion is permanent and cannot be undone. Are you sure you want to deactivate your license and purge all daily sales history from the server?
             </p>
             <div className="grid grid-cols-2 gap-4 pt-2">

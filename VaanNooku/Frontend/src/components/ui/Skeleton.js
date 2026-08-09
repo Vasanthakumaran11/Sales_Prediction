@@ -10,7 +10,7 @@ export function CardSkeleton({ className = "h-40" }) {
       className={`bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-900 rounded-2xl p-5 animate-pulse ${className}`}
     >
       <div className="h-4 w-36 bg-zinc-200 dark:bg-zinc-800 rounded mb-4" />
-      <div className="h-full w-full bg-zinc-105 dark:bg-zinc-950/60 rounded-xl" />
+      <div className="h-full w-full bg-zinc-100 dark:bg-zinc-950/60 rounded-xl" />
     </div>
   );
 }
@@ -25,10 +25,10 @@ export function PageSkeleton() {
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <CardSkeleton className="lg:col-span-2 h-[320px]" />
+        <CardSkeleton className="lg:col-span-2 h-80" />
         <div className="space-y-6">
-          <CardSkeleton className="h-[148px]" />
-          <CardSkeleton className="h-[148px]" />
+          <CardSkeleton className="h-37" />
+          <CardSkeleton className="h-37" />
         </div>
       </div>
     </div>

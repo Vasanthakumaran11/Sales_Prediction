@@ -53,7 +53,7 @@ export function Sidebar() {
   const storeDetail = activeStore ? `${activeStore.type} • ${activeStore.location}` : "Multi-Store Control";
 
   return (
-    <aside className="w-58 bg-white border-r border-black flex flex-col h-screen fixed left-0 top-0 text-slate-700 font-serif z-20 transition-colors duration-200">
+    <aside className="w-(--sidebar-w) bg-white border-r border-slate-200 flex flex-col h-screen fixed left-0 top-0 text-slate-700 font-serif z-20 transition-colors duration-200">
       {/* RetailAI Logo Section */}
       <div className="p-5 border-b border-sky-100/50 flex items-center gap-3 shrink-0">
         <div className="relative">
@@ -76,14 +76,14 @@ export function Sidebar() {
               id={`nav-item-${item.id}`}
               key={item.id}
               onClick={() => setActiveView(item.id)}
-              className={`w-full flex items-center gap-3.5 p-6 rounded-xl text-xs font-semibold tracking-wide transition-all group ${
+              className={`w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all group ${
                 isActive
                   ? "bg-sky-50 text-blue-600 font-bold"
                   : "text-slate-600 hover:text-slate-900 hover:bg-sky-50/20"
               }`}
             >
               <Icon
-                className={`w-[18px] h-[18px] transition-all shrink-0 ${
+                className={`w-4.5 h-4.5 transition-all shrink-0 ${
                   isActive
                     ? "text-blue-600 scale-105"
                     : "text-slate-400 group-hover:text-slate-700"

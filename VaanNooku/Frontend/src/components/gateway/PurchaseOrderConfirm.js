@@ -9,7 +9,7 @@ export function PurchaseOrderConfirm({
   handleActivateStore
 }) {
   return (
-    <div className="w-full max-w-5xl bg-white border border-sky-100 rounded-2xl shadow-xl overflow-hidden relative z-10 flex flex-col min-h-[520px]">
+    <div className="w-full max-w-5xl bg-white border border-sky-100 rounded-2xl shadow-xl overflow-hidden relative z-10 flex flex-col min-h-130">
       {/* macOS-style Top Bar */}
       <div className="relative p-4 bg-slate-100 border-b border-slate-200 flex items-center justify-center h-12 shrink-0">
         <div className="absolute left-4 flex items-center gap-1.5 group">
@@ -69,7 +69,7 @@ export function PurchaseOrderConfirm({
                   <th className="p-3 text-right">Total Cost</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-150 text-slate-700">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 {selectedProducts
                   .filter((p) => p.checked)
                   .map((p) => (
@@ -133,7 +133,7 @@ export function PurchaseOrderConfirm({
                 }`}
               >
                 <span className="text-[9px] text-slate-400 font-bold block uppercase">STAPLES & GRAINS supplier</span>
-                <span className="font-bold text-slate-850 block">Balaji Agro Distributors</span>
+                <span className="font-bold text-slate-800 block">Balaji Agro Distributors</span>
                 <span className="text-[9px] text-slate-500 font-medium">98.5% reliability • Chennai HQ • Click to Select</span>
               </button>
 
@@ -147,7 +147,7 @@ export function PurchaseOrderConfirm({
                 }`}
               >
                 <span className="text-[9px] text-slate-400 font-bold block uppercase">BEVERAGES supplier</span>
-                <span className="font-bold text-slate-850 block">Surya Packaged Goods Ltd</span>
+                <span className="font-bold text-slate-800 block">Surya Packaged Goods Ltd</span>
                 <span className="text-[9px] text-slate-500 font-medium">96.8% fulfillment rate • Bangalore • Click to Select</span>
               </button>
 
@@ -161,7 +161,7 @@ export function PurchaseOrderConfirm({
                 }`}
               >
                 <span className="text-[9px] text-slate-400 font-bold block uppercase">DAIRY & BAKERY supplier</span>
-                <span className="font-bold text-slate-850 block">Shiva Dairy & Farms</span>
+                <span className="font-bold text-slate-800 block">Shiva Dairy & Farms</span>
                 <span className="text-[9px] text-slate-500 font-medium">Fresh cold storage • Coimbatore • Click to Select</span>
               </button>
             </div>
@@ -174,7 +174,7 @@ export function PurchaseOrderConfirm({
         <button
           type="button"
           onClick={() => setGatewayState("recommendations")}
-          className="px-4 py-2 rounded-lg border border-slate-200 text-slate-650 hover:bg-slate-50 hover:text-slate-900 font-bold transition-all"
+          className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold transition-all"
         >
           Back to Product Selection
         </button>

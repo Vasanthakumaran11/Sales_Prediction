@@ -1,31 +1,14 @@
-import { resolveData } from "./client";
-import { SEED_TRANSACTIONS } from "@/lib/mock/transactions";
+import { request } from "./client";
 
-let sessionLog = null;
-function getSessionLog() {
-  if (!sessionLog) sessionLog = SEED_TRANSACTIONS.map((t) => ({ ...t }));
-  return sessionLog;
+// POST /api/stores/:storeId/daily-log
+export async function submitDailyLog(storeId, payload) {
+  return request(`/api/stores/${storeId}/daily-log`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
-// GET /api/stores/:storeId/transactions
-export async function listTransactions(storeId) {
-  return resolveData(`/api/stores/${storeId ?? "executive"}/transactions`, () => getSessionLog());
-}
-
-// POST /api/stores/:storeId/transactions
-export async function createTransaction(storeId, payload) {
-  return resolveData(
-    `/api/stores/${storeId ?? "executive"}/transactions`,
-    () => {
-      const entry = {
-        id: Math.floor(Math.random() * 100000),
-        timestamp: new Date().toTimeString().split(" ")[0],
-        syncState: "syncing",
-        ...payload,
-      };
-      getSessionLog().unshift(entry);
-      return entry;
-    },
-    { method: "POST", body: JSON.stringify(payload) }
-  );
+// GET /api/stores/:storeId/daily-logs
+export async function listDailyLogs(storeId) {
+  return request(`/api/stores/${storeId}/daily-logs`);
 }

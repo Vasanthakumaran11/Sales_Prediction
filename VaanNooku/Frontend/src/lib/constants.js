@@ -24,3 +24,7 @@ export const NAV_ITEMS = [
 
 export const BRAND_NAME = "Smart Retail AI";
 export const BRAND_TAGLINE = "Decision Intelligence Platform";
+
+// Store IDs backed by lib/mock/* only — never hit the live backend, used purely
+// for offline pitch/demo purposes. Any other store id is a real, DB-backed store.
+export const DEMO_STORE_IDS = ["balaji-store", "shiva-stores", "surya-markets"];

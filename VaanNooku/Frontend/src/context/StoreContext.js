@@ -1,9 +1,21 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { listDailyLogs } from "@/lib/api/transactions";
+import { getProducts } from "@/lib/api/products";
+import { isLiveBackendConfigured, setAuthToken } from "@/lib/api/client";
 
 const StoreContext = createContext(null);
 
+/**
+ * Demo vs. real store split:
+ * - Demo stores (ids in DEMO_STORE_IDS, lib/constants.js) are pure client-side
+ *   mock data from lib/mock/* — they never touch the backend, and exist purely
+ *   for offline pitch/demo purposes.
+ * - Every other store id is a real, DB-backed store: it always hits the live
+ *   API via lib/api/*, and shows an explicit error/empty state on failure
+ *   rather than silently falling back to fabricated numbers.
+ */
 export function StoreProvider({ children }) {
   const [theme, setTheme] = useState("light");
   const [stage, setStage] = useState("gateway"); // 'gateway' | 'active'
@@ -18,37 +30,39 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const path = window.location.pathname;
-      if (path === "/login") {
-        setStage("gateway");
-        setGatewayState("login");
-      } else if (path === "/register") {
-        setStage("gateway");
-        setGatewayState("register");
-      } else if (path === "/dashboard") {
-        setStage("active");
-        setActiveView("data-entry");
-      } else if (path === "/analytics") {
-        setStage("active");
-        setActiveView("sales");
-      } else if (path === "/inventory") {
-        setStage("active");
-        setActiveView("inventory");
-      } else if (path === "/products") {
-        setStage("active");
-        setActiveView("products");
-      } else if (path === "/suppliers") {
-        setStage("active");
-        setActiveView("suppliers");
-      } else if (path === "/predictions") {
-        setStage("active");
-        setActiveView("ai-predictions");
-      } else if (path === "/history") {
-        setStage("active");
-        setActiveView("history");
-      } else if (path === "/settings") {
-        setStage("active");
-        setActiveView("settings");
-      }
+      setTimeout(() => {
+        if (path === "/login") {
+          setStage("gateway");
+          setGatewayState("login");
+        } else if (path === "/register") {
+          setStage("gateway");
+          setGatewayState("register");
+        } else if (path === "/dashboard") {
+          setStage("active");
+          setActiveView("data-entry");
+        } else if (path === "/analytics") {
+          setStage("active");
+          setActiveView("sales");
+        } else if (path === "/inventory") {
+          setStage("active");
+          setActiveView("inventory");
+        } else if (path === "/products") {
+          setStage("active");
+          setActiveView("products");
+        } else if (path === "/suppliers") {
+          setStage("active");
+          setActiveView("suppliers");
+        } else if (path === "/predictions") {
+          setStage("active");
+          setActiveView("ai-predictions");
+        } else if (path === "/history") {
+          setStage("active");
+          setActiveView("history");
+        } else if (path === "/settings") {
+          setStage("active");
+          setActiveView("settings");
+        }
+      }, 0);
     }
   }, []);
 
@@ -95,13 +109,12 @@ export function StoreProvider({ children }) {
 
     setHistoryLogs([]);
     setStoreProducts([]);
+    setAuthToken(store?.token || null);
 
     if (store) {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-      if (apiBase) {
+      if (isLiveBackendConfigured()) {
         // Fetch daily logs dynamically
-        fetch(`${apiBase}/api/stores/${store.id}/daily-logs`)
-          .then((res) => res.json())
+        listDailyLogs(store.id)
           .then((data) => {
             if (Array.isArray(data)) {
               setHistoryLogs(
@@ -119,8 +132,7 @@ export function StoreProvider({ children }) {
           .catch((err) => console.error("Error fetching daily logs from database:", err));
 
         // Fetch products catalog dynamically
-        fetch(`${apiBase}/api/stores/${store.id}/products`)
-          .then((res) => res.json())
+        getProducts(store.id)
           .then((data) => {
             if (Array.isArray(data)) {
               setStoreProducts(
@@ -176,6 +188,7 @@ export function StoreProvider({ children }) {
     setStage("gateway");
     setActiveStore(null);
     setIsExecutiveMode(false);
+    setAuthToken(null);
   }, []);
 
   const value = useMemo(

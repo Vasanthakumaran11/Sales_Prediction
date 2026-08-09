@@ -11,7 +11,7 @@ export function ShelfRecommendations({
   const [hasPurchasePlan, setHasPurchasePlan] = useState(null); // null | 'yes' | 'no'
 
   return (
-    <div className="w-full max-w-4xl bg-white border border-sky-100 rounded-2xl shadow-xl overflow-hidden relative z-10 flex flex-col min-h-[520px]">
+    <div className="w-full max-w-4xl bg-white border border-sky-100 rounded-2xl shadow-xl overflow-hidden relative z-10 flex flex-col min-h-130">
       {/* macOS-style Top Bar */}
       <div className="relative p-4 bg-slate-100 border-b border-slate-200 flex items-center justify-center h-12 shrink-0">
         <div className="absolute left-4 flex items-center gap-1.5 group">
@@ -130,7 +130,7 @@ export function ShelfRecommendations({
               )}
             </div>
 
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 border border-slate-150 rounded-xl p-2.5 bg-slate-50/50">
+            <div className="space-y-3 max-h-75 overflow-y-auto pr-1 border border-slate-100 rounded-xl p-2.5 bg-slate-50/50">
               {selectedProducts.map((p) => {
                 const productCost = p.buyingPrice * p.qty;
                 return (
@@ -151,7 +151,7 @@ export function ShelfRecommendations({
                             prev.map((item) => (item.id === p.id ? { ...item, checked: !item.checked } : item))
                           )
                         }
-                        className="w-4.5 h-4.5 rounded text-sky-600 accent-sky-600 cursor-pointer"
+                        className="w-4 h-4 rounded text-sky-600 accent-sky-600 cursor-pointer"
                       />
                       <div>
                         <span className="font-bold text-slate-800 text-xs block">{p.name}</span>

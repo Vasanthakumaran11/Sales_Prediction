@@ -4,6 +4,9 @@ import React, { useState, useEffect } from "react";
 import { Sparkles, Package, HelpCircle, ArrowRight, TrendingUp, DollarSign, BarChart3, Layers, CheckCircle } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
 import { useStoreContext } from "@/context/StoreContext";
+import { DEMO_STORE_IDS } from "@/lib/constants";
+import { getStockSummary, getForecast, getNextMonthPrediction } from "@/lib/api/predictions";
+import { isLiveBackendConfigured } from "@/lib/api/client";
 
 // Helper to compute category stock levels dynamically from active storeProducts list
 const getDynamicCategories = (products) => {
@@ -52,36 +55,31 @@ export default function AIPredictions() {
   const [productForecastError, setProductForecastError] = useState("");
 
   useEffect(() => {
-    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
-    const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
-    if (!isDemo && activeStore) {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-      if (apiBase) {
-        fetch(`${apiBase}/api/stores/${activeStore.id}/predictions/stock-summary`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (Array.isArray(data) && data.length > 0) {
-              const colors = [
-                "bg-sky-50 border-sky-200 text-sky-700",
-                "bg-blue-50 border-blue-200 text-blue-700",
-                "bg-teal-50 border-teal-200 text-teal-700",
-                "bg-indigo-50 border-indigo-200 text-indigo-700"
-              ];
-              const mapped = data.map((c, idx) => ({
-                id: c.category.toLowerCase().replace(" ", "-"),
-                name: c.category,
-                itemCount: c.skuCount,
-                totalStock: c.totalStock,
-                color: colors[idx % colors.length],
-                products: []
-              }));
-              setApiCategories(mapped);
-            }
-          })
-          .catch((err) => {
-            console.error("Error fetching stock summary predictions:", err);
-          });
-      }
+    const isDemo = activeStore ? DEMO_STORE_IDS.includes(activeStore.id) : true;
+    if (!isDemo && activeStore && isLiveBackendConfigured()) {
+      getStockSummary(activeStore.id)
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            const colors = [
+              "bg-sky-50 border-sky-200 text-sky-700",
+              "bg-blue-50 border-blue-200 text-blue-700",
+              "bg-teal-50 border-teal-200 text-teal-700",
+              "bg-indigo-50 border-indigo-200 text-indigo-700"
+            ];
+            const mapped = data.map((c, idx) => ({
+              id: c.category.toLowerCase().replace(" ", "-"),
+              name: c.category,
+              itemCount: c.skuCount,
+              totalStock: c.totalStock,
+              color: colors[idx % colors.length],
+              products: []
+            }));
+            setApiCategories(mapped);
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching stock summary predictions:", err);
+        });
     }
   }, [activeStore]);
 
@@ -108,20 +106,13 @@ export default function AIPredictions() {
     setProductForecastError("");
     setLoadingProductForecast(true);
 
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-    if (apiBase && activeStore) {
+    if (isLiveBackendConfigured() && activeStore) {
       try {
-        const response = await fetch(`${apiBase}/api/predictions/next-month/${activeStore.id}/${product.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setProductForecast(data);
-        } else {
-          const errData = await response.json();
-          setProductForecastError(errData.detail || "Unable to load forecast.");
-        }
+        const data = await getNextMonthPrediction(activeStore.id, product.id);
+        setProductForecast(data);
       } catch (err) {
         console.error("Connection failure fetching item forecast:", err);
-        setProductForecastError("Server connection failure. Ensure backend is running.");
+        setProductForecastError(err.message || "Unable to load forecast. Ensure backend is running.");
       }
     } else {
       // Mock forecast for demo/fallback
@@ -151,66 +142,33 @@ export default function AIPredictions() {
     setPredicting(true);
     setPredictionError("");
     setProductPredictions([]);
-    
-    if (activeStore) {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-      if (apiBase) {
-        try {
-          const response = await fetch(`${apiBase}/api/stores/${activeStore.id}/predictions/forecast`, {
-            method: "POST"
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setForecastData(data);
-            
-            // Fetch individual product predictions in parallel
-            const promises = (storeProducts || []).map(async (p) => {
-              try {
-                const itemRes = await fetch(`${apiBase}/api/predictions/next-month/${activeStore.id}/${p.id}`);
-                if (itemRes.ok) {
-                  const itemData = await itemRes.json();
-                  return {
-                    name: p.name,
-                    sku: p.sku,
-                    category: p.category,
-                    currentStock: p.stock || 0,
-                    projectedDemand: itemData.monthly_total_units || 0,
-                    projectedRevenue: itemData.monthly_revenue || 0,
-                    reorderPoint: itemData.business_metrics?.reorder_point || 30,
-                    recommendedOrder: itemData.business_metrics?.recommended_order_qty || 0
-                  };
-                }
-              } catch (e) {
-                console.error("Failed to fetch next-month forecast for product " + p.name, e);
-              }
-              // Fallback calculations for clean UI
-              const fallbackDemand = Math.round((p.stock || 20) * 0.6 + 25);
-              return {
-                name: p.name,
-                sku: p.sku,
-                category: p.category,
-                currentStock: p.stock || 0,
-                projectedDemand: fallbackDemand,
-                projectedRevenue: fallbackDemand * p.sellingPrice,
-                reorderPoint: 30,
-                recommendedOrder: fallbackDemand > (p.stock || 0) ? (fallbackDemand - (p.stock || 0) + 15) : 0
-              };
-            });
-            
-            const results = await Promise.all(promises);
-            setProductPredictions(results);
-            setShowPredictions(true);
-          } else {
-            console.error("Prediction forecast endpoint error.");
-            setPredictionError("Prediction generation failed. Ensure your transaction logs are fully synced.");
-          }
-        } catch (err) {
-          console.error("Connection failure fetching demand predictions:", err);
-          setPredictionError("Failed to connect to forecast service. Backend is currently offline.");
-        }
-      } else {
-        setPredictionError("Forecast service endpoint is not configured.");
+
+    if (activeStore && isLiveBackendConfigured()) {
+      try {
+        // Single call — the backend aggregates the real per-product ensemble
+        // forecasts server-side, so the summary tiles, weekly trend, and
+        // per-SKU table below are all guaranteed to derive from the same numbers.
+        const data = await getForecast(activeStore.id);
+        setForecastData(data);
+        setProductPredictions(
+          (data.productBreakdown || []).map((p) => ({
+            name: p.name,
+            sku: p.sku,
+            category: p.category,
+            currentStock: p.currentStock,
+            projectedDemand: p.projectedDemand,
+            projectedRevenue: p.projectedRevenue,
+            reorderPoint: p.reorderPoint,
+            recommendedOrder: p.recommendedOrder,
+          }))
+        );
+        setShowPredictions(true);
+      } catch (err) {
+        console.error("Connection failure fetching demand predictions:", err);
+        setPredictionError(err.message || "Prediction generation failed. Ensure your transaction logs are fully synced.");
       }
+    } else {
+      setPredictionError("Forecast service endpoint is not configured.");
     }
     setPredicting(false);
   };
@@ -226,7 +184,7 @@ export default function AIPredictions() {
           <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
             <Sparkles className="w-6 h-6 animate-pulse" />
           </div>
-          <h3 className="text-sm font-bold text-slate-850 font-serif">Models Not Trained</h3>
+          <h3 className="text-sm font-bold text-slate-800 font-serif">Models Not Trained</h3>
           <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
             AI demand forecasting and machine learning prediction models require active store transactions history to begin inference.
           </p>
@@ -293,7 +251,7 @@ export default function AIPredictions() {
                 <div key={idx} className="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-b-0">
                   <div>
                     <span className="font-semibold text-slate-800 block">{p.name}</span>
-                    <span className="text-[9px] text-slate-450 uppercase">{p.sku}</span>
+                    <span className="text-[9px] text-slate-400 uppercase">{p.sku}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span
@@ -347,7 +305,7 @@ export default function AIPredictions() {
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {loadingProductForecast ? (
                 <div className="py-16 flex flex-col items-center justify-center text-center gap-3">
-                  <div className="w-10 h-10 rounded-full border-3 border-sky-150 border-t-blue-600 animate-spin" />
+                  <div className="w-10 h-10 rounded-full border-2 border-sky-200 border-t-blue-600 animate-spin" />
                   <span className="text-xs text-slate-500 font-bold">Running RF, XGBoost, LightGBM & CatBoost models...</span>
                 </div>
               ) : productForecastError ? (
@@ -414,7 +372,7 @@ export default function AIPredictions() {
                       </p>
                     </div>
                     <div className="shrink-0 bg-white border border-blue-100 px-4 py-2.5 rounded-xl text-center sm:text-right">
-                      <span className="block text-[8px] font-bold text-slate-450 uppercase leading-none">Proj. Monthly Total</span>
+                      <span className="block text-[8px] font-bold text-slate-400 uppercase leading-none">Proj. Monthly Total</span>
                       <span className="block text-base font-black text-blue-600 mt-1">{productForecast.monthly_total_units || 0} units</span>
                     </div>
                   </div>
@@ -422,7 +380,7 @@ export default function AIPredictions() {
                   {/* Prediction Daily Sparkline / Trend */}
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold text-slate-800">30-Day Forward Forecast Curve</h4>
-                    <div className="h-44 bg-white border border-slate-150 rounded-2xl p-4 flex flex-col justify-between">
+                    <div className="h-44 bg-white border border-slate-100 rounded-2xl p-4 flex flex-col justify-between">
                       <div className="h-32 w-full relative flex items-end">
                         {/* Custom sparkline path */}
                         <svg viewBox="0 0 300 100" className="w-full h-full">
@@ -476,7 +434,7 @@ export default function AIPredictions() {
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="px-5 py-2 bg-slate-200 hover:bg-slate-350 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all"
               >
                 Close Projections
               </button>
@@ -490,7 +448,7 @@ export default function AIPredictions() {
       <Card className="p-6 space-y-6 bg-sky-50/20 border-sky-100 flex flex-col justify-between">
         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
           <div>
-            <h3 className="text-sm font-bold text-slate-905 uppercase tracking-wider font-serif">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif">
               Project Sales for Next Month
             </h3>
             <p className="text-xs text-slate-500 font-sans mt-1">Execute the Hybrid Regression forecast engine using existing logs.</p>
@@ -559,7 +517,7 @@ export default function AIPredictions() {
              </div>
 
             {/* Visual SVG chart */}
-            <div className="md:col-span-2 bg-white border border-sky-100 rounded-xl p-4 shadow-sm flex flex-col justify-between h-full min-h-[220px]">
+            <div className="md:col-span-2 bg-white border border-sky-100 rounded-xl p-4 shadow-sm flex flex-col justify-between h-full min-h-55">
               <div>
                 <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">4-Week Forward Trend</span>
                 <span className="text-[8px] text-slate-500">Weekly sales projections matching historical seasonality</span>
@@ -571,17 +529,28 @@ export default function AIPredictions() {
                   <line x1="0" y1="20" x2="100" y2="20" className="stroke-slate-100" strokeWidth="0.5" strokeDasharray="1 1" />
                   <line x1="0" y1="5" x2="100" y2="5" className="stroke-slate-100" strokeWidth="0.5" strokeDasharray="1 1" />
                   
-                  {/* Projected curve */}
-                  <path d="M 5 32 Q 25 24 50 15 T 95 8" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeDasharray="1.5 1" />
-                  <circle cx="5" cy="32" r="1.5" fill="#2563eb" />
-                  <circle cx="35" cy="22" r="1.5" fill="#2563eb" />
-                  <circle cx="65" cy="14" r="1.5" fill="#2563eb" />
-                  <circle cx="95" cy="8" r="1.5" fill="#2563eb" />
-
-                  <text x="5" y="38" className="fill-slate-400" fontSize="3">Week 1</text>
-                  <text x="35" y="38" className="fill-slate-400" fontSize="3">Week 2</text>
-                  <text x="65" y="38" className="fill-slate-400" fontSize="3">Week 3</text>
-                  <text x="90" y="38" className="fill-slate-400" fontSize="3">Week 4</text>
+                  {/* Projected curve — computed from the real per-product ensemble weekly aggregates */}
+                  {(() => {
+                    const weeks = forecastData?.weeklyBreakdown || [];
+                    const maxVal = Math.max(...weeks.map((w) => w.projectedSales), 1);
+                    const points = weeks.map((w, idx) => ({
+                      x: 5 + (idx / Math.max(1, weeks.length - 1)) * 90,
+                      y: 32 - (w.projectedSales / maxVal) * 27,
+                      label: w.week,
+                    }));
+                    const pathD = points.length > 0 ? `M ${points.map((p) => `${p.x} ${p.y}`).join(" L ")}` : "";
+                    return (
+                      <>
+                        {pathD && <path d={pathD} fill="none" stroke="#2563eb" strokeWidth="2.5" />}
+                        {points.map((p, idx) => (
+                          <circle key={idx} cx={p.x} cy={p.y} r="1.5" fill="#2563eb" />
+                        ))}
+                        {points.map((p, idx) => (
+                          <text key={idx} x={p.x} y="38" className="fill-slate-400" fontSize="3">{p.label}</text>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </svg>
               </div>
             </div>
@@ -618,7 +587,7 @@ export default function AIPredictions() {
                          <span className="block text-[8px] text-slate-400 font-normal uppercase tracking-wider mt-0.5">{item.sku}</span>
                        </td>
                        <td className="py-2.5 px-4">
-                         <span className="px-2 py-0.5 rounded bg-slate-50 border border-slate-150 text-[9px] text-slate-650 font-semibold">
+                         <span className="px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-[9px] text-slate-600 font-semibold">
                            {item.category}
                          </span>
                        </td>

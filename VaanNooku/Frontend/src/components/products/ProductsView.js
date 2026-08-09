@@ -24,9 +24,9 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
-import { flattenCatalog } from "@/lib/mock/catalog";
-
 import { useStoreContext } from "@/context/StoreContext";
+import { DEMO_STORE_IDS } from "@/lib/constants";
+import { addProduct } from "@/lib/api/products";
 
 export default function ProductsView() {
   const { storeProducts, setStoreProducts, activeStore } = useStoreContext();
@@ -39,9 +39,6 @@ export default function ProductsView() {
   const products = storeProducts || [];
   const setProducts = setStoreProducts;
 
-  // Mock catalog loaded
-  const baseCatalog = flattenCatalog();
-
   if (products.length === 0) {
     return (
       <div className="space-y-6 font-sans px-6">
@@ -53,7 +50,7 @@ export default function ProductsView() {
           <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
             <Package className="w-6 h-6 animate-pulse" />
           </div>
-          <h3 className="text-sm font-bold text-slate-850 font-serif">No Products in Catalog</h3>
+          <h3 className="text-sm font-bold text-slate-800 font-serif">No Products in Catalog</h3>
           <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
             Your store catalog is empty. Place a replenishment order in the <strong>Inventory</strong> panel to receive your first product delivery.
           </p>
@@ -62,8 +59,7 @@ export default function ProductsView() {
     );
   }
 
-  const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
-  const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
+  const isDemo = activeStore ? DEMO_STORE_IDS.includes(activeStore.id) : true;
 
   // Dynamic metrics computations
   const totalProducts = products.length;
@@ -175,32 +171,20 @@ export default function ProductsView() {
     };
 
     // Save product to database if dynamic store
-    if (activeStore) {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-      if (apiBase) {
-        try {
-          const response = await fetch(`${apiBase}/api/stores/${activeStore.id}/products`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sku: sku,
-              name: name,
-              category: category,
-              costPrice: buyingPrice,
-              sellingPrice: sellingPrice
-            })
-          });
-          if (!response.ok) {
-            console.error("Failed to add product to database.");
-          } else {
-            console.log("Product successfully saved to database!");
-          }
-        } catch (err) {
-          console.error("Connection failure adding product to DB:", err);
-        }
+    if (activeStore && !isDemo) {
+      try {
+        await addProduct(activeStore.id, {
+          sku,
+          name,
+          category,
+          costPrice: buyingPrice,
+          sellingPrice
+        });
+      } catch (err) {
+        console.error("Connection failure adding product to DB:", err);
       }
     }
-    
+
     setProducts((prev) => [newProduct, ...prev]);
   };
 
@@ -227,7 +211,7 @@ export default function ProductsView() {
             onClick={handleImportProducts}
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg shadow-sm"
           >
-            Import Products <ChevronDown className="w-3.5 h-3.5 text-slate-405" />
+            Import Products <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
           <button
             onClick={handleAddProduct}
@@ -244,7 +228,7 @@ export default function ProductsView() {
         <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Total Products</span>
-            <Package className="w-3.5 h-3.5 text-blue-505" />
+            <Package className="w-3.5 h-3.5 text-blue-500" />
           </div>
           <span className="text-base font-black text-slate-900 mt-1">{totalProducts}</span>
           {isDemo ? (
@@ -258,7 +242,7 @@ export default function ProductsView() {
         <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Categories</span>
-            <Layers className="w-3.5 h-3.5 text-blue-505" />
+            <Layers className="w-3.5 h-3.5 text-blue-500" />
           </div>
           <span className="text-base font-black text-slate-900 mt-1">{categoriesCount}</span>
           {isDemo ? (
@@ -272,7 +256,7 @@ export default function ProductsView() {
         <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Inventory Value</span>
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-505" />
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
           </div>
           <span className="text-base font-black text-slate-900 mt-1">
             {totalInventoryValue > 10000000 
@@ -290,7 +274,7 @@ export default function ProductsView() {
         <div className="bg-white border border-sky-100 rounded-xl p-3.5 flex flex-col gap-1 shadow-sm font-sans">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Average Margin</span>
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-505" />
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
           </div>
           <span className="text-base font-black text-slate-900 mt-1">{avgMargin.toFixed(1)}%</span>
           {isDemo ? (
@@ -468,7 +452,7 @@ export default function ProductsView() {
                 <div key={idx} className="flex justify-between items-center text-slate-700">
                   <div>
                     <span className="font-bold text-slate-900 block font-serif leading-tight">{up.name}</span>
-                    <span className="text-[9px] text-slate-450 uppercase">{up.desc}</span>
+                    <span className="text-[9px] text-slate-400 uppercase">{up.desc}</span>
                   </div>
                   <span className="text-[9px] text-slate-400">{up.time}</span>
                 </div>
@@ -480,7 +464,7 @@ export default function ProductsView() {
 
       {/* Row 4 - Filtering & Search Bar */}
       <Card className="p-4 flex flex-col md:flex-row flex-wrap items-center gap-3 text-xs bg-white border border-sky-100">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-50">
           <input
             type="text"
             placeholder="Search by product name, SKU, barcode..."
@@ -514,7 +498,7 @@ export default function ProductsView() {
           <option>Tata Tea</option>
         </select>
 
-        <button className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-705 font-bold shadow-sm">
+        <button className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 font-bold shadow-sm">
           <Filter className="w-3.5 h-3.5" /> More Filters
         </button>
         <button
@@ -537,7 +521,7 @@ export default function ProductsView() {
               <th className="p-3.5 w-10 text-center">
                 <input type="checkbox" className="w-4 h-4 rounded text-blue-600 accent-blue-600" />
               </th>
-              <th className="p-3.5 min-w-[200px]">Product</th>
+              <th className="p-3.5 min-w-50">Product</th>
               <th className="p-3.5">Category</th>
               <th className="p-3.5">Brand</th>
               <th className="p-3.5">SKU / Barcode</th>
@@ -558,7 +542,7 @@ export default function ProductsView() {
                 </td>
                 <td className="p-3.5">
                   <div className="flex items-center gap-3">
-                    <span className="text-xl bg-slate-105/50 w-8 h-8 rounded-lg flex items-center justify-center border border-slate-100">
+                    <span className="text-xl bg-slate-100/50 w-8 h-8 rounded-lg flex items-center justify-center border border-slate-100">
                       {item.img}
                     </span>
                     <div>
@@ -608,7 +592,7 @@ export default function ProductsView() {
                     {item.status}
                   </span>
                 </td>
-                <td className="p-3.5 text-[10px] text-slate-450 leading-relaxed">{item.updated}</td>
+                <td className="p-3.5 text-[10px] text-slate-400 leading-relaxed">{item.updated}</td>
                 <td className="p-3.5 text-center">
                   <div className="flex items-center justify-center gap-1.5 text-slate-400">
                     <button className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded">
@@ -629,7 +613,7 @@ export default function ProductsView() {
       </Card>
 
       {/* Pagination Footer */}
-      <div className="flex justify-between items-center text-xs text-slate-450 font-sans border-t border-sky-100 pt-4">
+      <div className="flex justify-between items-center text-xs text-slate-400 font-sans border-t border-sky-100 pt-4">
         <span>Showing 1 to 5 of 4,250 products</span>
         <div className="flex items-center gap-1">
           <button className="px-2 py-1 border border-slate-200 hover:bg-slate-50 rounded font-semibold">&lt;</button>

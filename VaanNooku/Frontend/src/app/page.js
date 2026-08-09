@@ -51,7 +51,7 @@ export default function Home() {
   return (
     <div className="flex h-screen overflow-hidden bg-sky-50 font-sans">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto pl-56 p-6 transition-colors duration-205">
+      <main className="flex-1 overflow-y-auto pl-(--sidebar-w) p-6 transition-colors duration-200">
         <div className="w-full space-y-4">
           {renderView()}
         </div>

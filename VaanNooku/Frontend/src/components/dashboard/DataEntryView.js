@@ -23,6 +23,9 @@ import { flattenCatalog } from "@/lib/mock/catalog";
 import { PageHeader, Card } from "@/components/ui/Card";
 import { STORE_PROFILES } from "@/lib/mock/stores";
 import { useStoreContext } from "@/context/StoreContext";
+import { DEMO_STORE_IDS } from "@/lib/constants";
+import { submitDailyLog } from "@/lib/api/transactions";
+import { isLiveBackendConfigured } from "@/lib/api/client";
 
 export default function DataEntryView() {
   const { activeStore, setHistoryLogs } = useStoreContext();
@@ -47,8 +50,7 @@ export default function DataEntryView() {
   // setState out of the effect body to avoid cascading renders
   useEffect(() => {
     if (!activeStore) return;
-    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
-    const isDemo = demoIds.includes(activeStore.id);
+    const isDemo = DEMO_STORE_IDS.includes(activeStore.id);
     const timer = setTimeout(() => {
       setSalesInfo((prev) => ({
         ...prev,
@@ -173,37 +175,24 @@ export default function DataEntryView() {
     };
 
     // Save Daily Log summary directly to Backend Database API if live config is set
-    if (activeStore) {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-      if (apiBase) {
-        try {
-          const response = await fetch(`${apiBase}/api/stores/${activeStore.id}/daily-log`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              date: formattedDate,
-              paymentDetails: {
-                cash: parseFloat(salesInfo.paymentMode.toLowerCase().includes("cash") ? totalPayable : 0) || totalPayable,
-                upi: parseFloat(salesInfo.paymentMode.toLowerCase().includes("upi") ? totalPayable : 0) || 0,
-                card: parseFloat(salesInfo.paymentMode.toLowerCase().includes("card") ? totalPayable : 0) || 0
-              },
-              items: rows.map(r => ({
-                productId: r.name,
-                qty: parseInt(r.qty) || 0,
-                discount: parseFloat(r.discount) || 0.0
-              })),
-              notes: salesInfo.notes || ""
-            })
-          });
-
-          if (!response.ok) {
-            console.error("Failed to persist daily sales log to database.");
-          } else {
-            console.log("Daily sales log saved to database successfully.");
-          }
-        } catch (err) {
-          console.error("Connection failure writing daily sales logs to DB:", err);
-        }
+    if (activeStore && isLiveBackendConfigured()) {
+      try {
+        await submitDailyLog(activeStore.id, {
+          date: formattedDate,
+          paymentDetails: {
+            cash: parseFloat(salesInfo.paymentMode.toLowerCase().includes("cash") ? totalPayable : 0) || totalPayable,
+            upi: parseFloat(salesInfo.paymentMode.toLowerCase().includes("upi") ? totalPayable : 0) || 0,
+            card: parseFloat(salesInfo.paymentMode.toLowerCase().includes("card") ? totalPayable : 0) || 0
+          },
+          items: rows.map(r => ({
+            productId: r.name,
+            qty: parseInt(r.qty) || 0,
+            discount: parseFloat(r.discount) || 0.0
+          })),
+          notes: salesInfo.notes || ""
+        });
+      } catch (err) {
+        console.error("Connection failure writing daily sales logs to DB:", err);
       }
     }
 
@@ -308,7 +297,7 @@ export default function DataEntryView() {
                 type="date"
                 value={salesInfo.date}
                 onChange={handleDateChange}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-xs text-slate-850 focus:outline-none focus:border-sky-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
               />
               <Calendar className="absolute right-2.5 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
@@ -369,7 +358,7 @@ export default function DataEntryView() {
                 <DollarSign className="w-5 h-5" />
               </div>
               <div>
-                <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Sales (₹)</span>
+                <span className="block text-[9px] text-slate-400 uppercase font-bold tracking-wider">Total Sales (₹)</span>
                 <span className="text-sm font-black text-slate-900 leading-none">₹{totalPayable.toLocaleString()}</span>
               </div>
             </div>
@@ -380,7 +369,7 @@ export default function DataEntryView() {
                 <Package className="w-5 h-5" />
               </div>
               <div>
-                <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Items Sold</span>
+                <span className="block text-[9px] text-slate-400 uppercase font-bold tracking-wider">Total Items Sold</span>
                 <span className="text-sm font-black text-slate-900 leading-none">{totalItemsSold}</span>
               </div>
             </div>
@@ -391,14 +380,14 @@ export default function DataEntryView() {
                 <Layers className="w-5 h-5" />
               </div>
               <div>
-                <span className="block text-[9px] text-slate-450 uppercase font-bold tracking-wider">Total Quantity</span>
+                <span className="block text-[9px] text-slate-400 uppercase font-bold tracking-wider">Total Quantity</span>
                 <span className="text-sm font-black text-slate-900 leading-none">{totalQtySold}</span>
               </div>
             </div>
 
             {/* Average Bill Value */}
             <div className="bg-white border border-sky-100 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
-              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-605">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
                 <TrendingUp className="w-5 h-5" />
               </div>
               <div>
@@ -429,7 +418,7 @@ export default function DataEntryView() {
                 <button
                   type="button"
                   onClick={handleAddProduct}
-                  className="flex items-center gap-1 px-3 py-1.5 border border-blue-500 text-blue-650 hover:bg-blue-50 text-xs font-bold rounded-lg transition-all"
+                  className="flex items-center gap-1 px-3 py-1.5 border border-blue-500 text-blue-600 hover:bg-blue-50 text-xs font-bold rounded-lg transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Product
                 </button>
@@ -457,7 +446,7 @@ export default function DataEntryView() {
                         className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 accent-blue-600"
                       />
                     </th>
-                    <th className="p-3 min-w-[200px]">Product Name / SKU</th>
+                    <th className="p-3 min-w-50">Product Name / SKU</th>
                     <th className="p-3">Category</th>
                     <th className="p-3 w-20">Unit</th>
                     <th className="p-3 w-28 text-right">Selling Price (₹)</th>
@@ -493,7 +482,7 @@ export default function DataEntryView() {
                       </td>
                       <td className="p-3 font-semibold text-slate-500">{row.category}</td>
                       <td className="p-3 text-slate-800 font-semibold">{row.unit}</td>
-                      <td className="p-3 text-right font-semibold text-slate-850">
+                      <td className="p-3 text-right font-semibold text-slate-800">
                         ₹{row.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
                       <td className="p-3 text-right">
@@ -602,7 +591,7 @@ export default function DataEntryView() {
               <div className="space-y-3.5 text-xs">
                 <div className="flex justify-between items-center py-0.5">
                   <span className="text-slate-500">Gross Sales</span>
-                  <span className="font-semibold text-slate-850">
+                  <span className="font-semibold text-slate-800">
                     ₹{grossSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -615,21 +604,21 @@ export default function DataEntryView() {
                 </div>
 
                 <div className="flex justify-between items-center py-0.5 border-t border-slate-100 pt-2.5">
-                  <span className="text-slate-505 font-bold">Net Sales</span>
+                  <span className="text-slate-500 font-bold">Net Sales</span>
                   <span className="font-black text-emerald-600 text-sm">
                     ₹{netSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-505">Tax Amount (18%)</span>
+                  <span className="text-slate-500">Tax Amount (18%)</span>
                   <span className="font-semibold text-slate-800">
                     ₹{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-505">Rounding Adjustment</span>
+                  <span className="text-slate-500">Rounding Adjustment</span>
                   <span className="font-semibold text-slate-800">
                     ₹{rounding.toFixed(2)}
                   </span>
@@ -658,7 +647,7 @@ export default function DataEntryView() {
             </button>
             <button
               onClick={handleSaveAllData}
-              className="flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 hover:bg-blue-505 text-white text-xs font-extrabold rounded-lg transition-all shadow-md"
+              className="flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold rounded-lg transition-all shadow-md"
             >
               <Save className="w-4 h-4" /> Save All Data
             </button>
@@ -669,7 +658,7 @@ export default function DataEntryView() {
           <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center mx-auto text-sky-500">
             <Plus className="w-6 h-6 animate-pulse" />
           </div>
-          <h3 className="text-sm font-bold text-slate-850 font-serif">Empty Daily Sales Log</h3>
+          <h3 className="text-sm font-bold text-slate-800 font-serif">Empty Daily Sales Log</h3>
           <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
             There are no sales items added to today&apos;s ledger. Click the button below to add your first sales transaction.
           </p>

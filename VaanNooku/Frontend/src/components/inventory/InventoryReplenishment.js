@@ -38,7 +38,7 @@ export default function InventoryReplenishment() {
     return (
       <div className="space-y-6">
         <div className="h-10 w-1/3 bg-slate-200 rounded animate-pulse" />
-        <Skeleton className="h-[250px]" />
+        <Skeleton className="h-62.5" />
       </div>
     );
   }
@@ -123,7 +123,7 @@ export default function InventoryReplenishment() {
                 onClick={() => setActiveTab("all")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   activeTab === "all"
-                    ? "bg-sky-50 border border-sky-100 text-sky-750"
+                    ? "bg-sky-50 border border-sky-100 text-sky-700"
                     : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
               >
@@ -193,7 +193,7 @@ export default function InventoryReplenishment() {
         </Card>
 
         {/* Right Side: Consolidated Order Sheet Cart */}
-        <div className="bg-white border border-sky-100 rounded-2xl p-5 flex flex-col h-[480px] justify-between shadow-sm">
+        <div className="bg-white border border-sky-100 rounded-2xl p-5 flex flex-col h-120 justify-between shadow-sm">
           <div className="space-y-1.5 border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-serif">
               Consolidated Bulk Purchase Order
@@ -214,7 +214,7 @@ export default function InventoryReplenishment() {
                     <span className="font-bold text-slate-900 block">{item.name}</span>
                     <span className="text-[10px] text-slate-500">{item.qty} units (EOQ)</span>
                   </div>
-                  <span className="font-bold text-slate-850">₹{item.cost.toLocaleString()}</span>
+                  <span className="font-bold text-slate-800">₹{item.cost.toLocaleString()}</span>
                 </div>
               ))
             ) : orderSuccess ? (

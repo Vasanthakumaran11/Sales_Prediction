@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -12,6 +12,7 @@
 :root {
   --background: #f0f9ff; /* sky-50 */
   --foreground: #0f172a; /* slate-900 */
+  --sidebar-w: 15rem;
 
   /* Chart tokens for light theme */
   --chart-1: #0284c7; /* sky-600 — Raw ML signal */

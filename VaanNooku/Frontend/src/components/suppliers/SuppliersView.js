@@ -4,6 +4,9 @@ import React, { useState, useEffect } from "react";
 import { Users, ShieldCheck, Mail, Phone } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui/Card";
 import { useStoreContext } from "@/context/StoreContext";
+import { DEMO_STORE_IDS } from "@/lib/constants";
+import { getSupplierSuggestions } from "@/lib/api/suppliers";
+import { isLiveBackendConfigured } from "@/lib/api/client";
 
 const DEFAULT_SUPPLIERS = [];
 
@@ -12,31 +15,26 @@ export default function SuppliersView() {
   const [apiSuppliers, setApiSuppliers] = useState(null);
 
   useEffect(() => {
-    const demoIds = ["balaji-store", "shiva-stores", "surya-markets"];
-    const isDemo = activeStore ? demoIds.includes(activeStore.id) : true;
-    
-    if (!isDemo) {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-      if (apiBase) {
-        fetch(`${apiBase}/api/suppliers/suggestions`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (Array.isArray(data)) {
-              setApiSuppliers(data.map(s => ({
-                name: s.name,
-                category: s.category || "General Wholesaler",
-                email: s.email || "contact@wholesaler.com",
-                phone: s.phone || "+91 99999 88888",
-                leadTime: `${s.lead_time_days || 2} Days`,
-                discount: `${s.min_order_qty || 10} Units Min Order`,
-                status: "Verified Supplier"
-              })));
-            }
-          })
-          .catch((err) => {
-            console.error("Error fetching suppliers:", err);
-          });
-      }
+    const isDemo = activeStore ? DEMO_STORE_IDS.includes(activeStore.id) : true;
+
+    if (!isDemo && isLiveBackendConfigured()) {
+      getSupplierSuggestions()
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setApiSuppliers(data.map(s => ({
+              name: s.name,
+              category: s.category || "General Wholesaler",
+              email: s.email || "contact@wholesaler.com",
+              phone: s.phone || "+91 99999 88888",
+              leadTime: `${s.lead_time_days || 2} Days`,
+              discount: `${s.min_order_qty || 10} Units Min Order`,
+              status: "Verified Supplier"
+            })));
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching suppliers:", err);
+        });
     }
   }, [activeStore]);
 
